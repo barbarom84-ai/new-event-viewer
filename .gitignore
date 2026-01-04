@@ -1,0 +1,25 @@
+# Dossiers de build
+bin/
+obj/
+publish/
+
+# Fichiers Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Fichiers ReSharper
+_ReSharper*/
+*.DotSettings.user
+
+# Fichiers temporaires
+*.tmp
+*.temp
+*.log
+
+# Fichiers Windows
+Thumbs.db
+Desktop.ini
+

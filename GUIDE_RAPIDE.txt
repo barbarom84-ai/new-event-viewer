@@ -1,0 +1,82 @@
+═══════════════════════════════════════════════════════════════
+  ⚡ OBSERVATEUR D'ÉVÉNEMENTS WINDOWS MODERNE - GUIDE RAPIDE
+═══════════════════════════════════════════════════════════════
+
+📦 COMPILATION
+──────────────
+Option 1 (Windows CMD):
+  > build.bat
+
+Option 2 (PowerShell):
+  > .\build.ps1
+
+Option 3 (Manuel):
+  > dotnet publish -c Release -r win-x64 --self-contained true
+
+L'exécutable sera généré dans:
+  bin\Release\net8.0-windows\win-x64\publish\EventViewer.exe
+
+💾 TAILLE ATTENDUE
+──────────────────
+  • Environ 15-25 MB (optimisé avec trimming)
+  • Fichier unique, aucune dépendance externe
+  • Prêt pour copie sur clé USB
+
+🚀 UTILISATION
+──────────────
+1. Exécuter EventViewer.exe EN TANT QU'ADMINISTRATEUR
+   (Requis pour accéder aux journaux Windows)
+
+2. Sélectionner le journal à consulter:
+   • System      → Événements système
+   • Application → Événements applicatifs
+   • Security    → Événements de sécurité
+
+3. Cliquer sur "🔄 Actualiser" pour charger les événements
+
+✨ FONCTIONNALITÉS
+──────────────────
+✓ Interface moderne avec thème sombre
+✓ Affichage des 50 dernières erreurs/avertissements
+✓ Icônes colorées par niveau de priorité:
+  🔴 Rouge  → Erreur
+  🟡 Jaune  → Avertissement
+  🔵 Bleu   → Information
+✓ Messages tronqués pour meilleure lisibilité
+✓ Chargement asynchrone (interface fluide)
+✓ 100% portable (clé USB)
+
+⚙️ OPTIMISATIONS
+─────────────────
+• PublishTrimmed: Suppression du code inutilisé
+• Compression intégrée au fichier unique
+• Cache des brushes WPF (frozen)
+• Virtualisation UI pour performances
+• Compilation AOT partielle (ReadyToRun)
+
+⚠️ NOTES IMPORTANTES
+─────────────────────
+• NÉCESSITE des privilèges administrateur
+• Compatible Windows 10/11 uniquement
+• L'élévation est demandée automatiquement via manifest
+
+🔧 DÉPANNAGE
+─────────────
+Erreur "Accès refusé":
+  → Clic droit → "Exécuter en tant qu'administrateur"
+
+Journal Security vide:
+  → Permissions spéciales requises (GPO ou Admin Domain)
+
+Compilation échoue:
+  → Vérifier que .NET 8.0 SDK est installé
+  → Exécuter: dotnet --version
+
+📚 PLUS D'INFOS
+───────────────
+Voir README.md pour la documentation complète
+
+═══════════════════════════════════════════════════════════════
+               Développé avec ❤️ en C# et WPF
+═══════════════════════════════════════════════════════════════
+
