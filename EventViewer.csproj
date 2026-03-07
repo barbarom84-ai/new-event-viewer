@@ -25,5 +25,10 @@
     <DefineConstants>$(DefineConstants);STORE_BUILD</DefineConstants>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Remove="EventViewer.Tests\**\*.cs" />
+    <None Remove="EventViewer.Tests\**\*" />
+  </ItemGroup>
+
 </Project>
 

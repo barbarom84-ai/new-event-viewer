@@ -19,6 +19,11 @@ Une alternative moderne, élégante et portable à l'Observateur d'événements 
 - ⚡ **Optimisé pour une taille minimale** (~15-25 MB)
 - 📊 **Support des journaux** System, Application et Security
 - 🚀 **Chargement asynchrone** pour une interface fluide
+- 📈 **Timeline incidents (24h)** basée sur les vraies dates d'événements
+- 🧠 **Insights de sévérité** (score de risque + top sources)
+- 🧾 **Export JSON** (rapport structuré pour support / analyse)
+- 📡 **Télémétrie locale opt-in** (désactivée par défaut)
+- 🧪 **Mode IA bêta** avec fallback local
 - 🎯 **Virtualisation UI** pour des performances optimales
 - 🔮 **Prêt pour l'enrichissement IA** (fonctionnalité future)
 
@@ -107,6 +112,12 @@ L'application est conçue pour être complètement portable :
 - L'application demande automatiquement l'élévation via le manifest
 - Les journaux Security peuvent nécessiter des permissions spéciales
 - Compatible Windows 10 version 1809 et supérieur
+- La télémétrie est locale et uniquement activée en opt-in (menu Outils)
+
+## ✅ Qualité & CI
+
+- Workflow CI GitHub Actions: build USB + build Store flag + tests unitaires
+- Projet de tests: `EventViewer.Tests`
 
 ## 🔧 Structure du Projet
 

@@ -2,9 +2,11 @@ using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -29,7 +31,12 @@ namespace EventViewer
 
         // Gestionnaire de snapshots
         private readonly SnapshotManager _snapshotManager = new();
+        private readonly IncidentTimelineService _timelineService = new();
+        private readonly InsightsService _insightsService = new();
+        private readonly AiAssistantService _aiAssistantService;
         private bool _comparisonMode = false;
+        private readonly AppSettings _settings;
+        private CancellationTokenSource? _loadEventsCts;
 
         // Timer pour l'actualisation automatique
         private readonly DispatcherTimer _autoRefreshTimer;
@@ -54,6 +61,9 @@ namespace EventViewer
         public MainWindow()
         {
             InitializeComponent();
+            _settings = AppSettingsStore.Load();
+            TelemetryService.Configure(_settings.TelemetryOptIn);
+            _aiAssistantService = new AiAssistantService(_errorAnalyzer);
             Events = new ObservableCollection<EventLogItem>();
             EventListView.ItemsSource = _filteredEvents;
             
@@ -71,6 +81,7 @@ namespace EventViewer
             UpdateAdminStatus();
 
             ApplyStoreBuildUiRules();
+            UpdateSettingsStatusText();
         }
 
         private static bool IsStoreBuild()
@@ -92,6 +103,20 @@ namespace EventViewer
             {
                 MaintenanceMenu.Visibility = Visibility.Collapsed;
             }
+        }
+
+        private void SaveSettings()
+        {
+            AppSettingsStore.Save(_settings);
+            TelemetryService.Configure(_settings.TelemetryOptIn);
+            UpdateSettingsStatusText();
+        }
+
+        private void UpdateSettingsStatusText()
+        {
+            var telemetry = _settings.TelemetryOptIn ? "ON" : "OFF";
+            var aiBeta = _settings.AiBetaEnabled ? "ON" : "OFF";
+            StatusText.Text = $"Prêt | Télémétrie {telemetry} | IA beta {aiBeta}";
         }
 
         private void SearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
@@ -246,6 +271,7 @@ namespace EventViewer
                 });
 
                 StatusText.Text = $"✓ Exporté: {IOPath.GetFileName(txtFilePath)} & {IOPath.GetFileName(csvFilePath)}";
+                TelemetryService.Track("csv_export_done", new { count = exportData.Events.Count });
                 
                 MessageBox.Show($"Export réussi !\n\n" +
                                $"Fichiers créés:\n" +
@@ -258,11 +284,69 @@ namespace EventViewer
             }
             catch (Exception ex)
             {
+                TelemetryService.TrackException("csv_export_failed", ex);
                 StatusText.Text = "✗ Erreur lors de l'export";
                 MessageBox.Show($"Erreur lors de l'export:\n\n{ex.Message}",
                                "Erreur d'export",
                                MessageBoxButton.OK,
                                MessageBoxImage.Error);
+            }
+        }
+
+        private async Task ExportJsonReportAsync()
+        {
+            try
+            {
+                var exportDirectory = AppPaths.ExportDirectory;
+                AppPaths.EnsureDirectory(exportDirectory);
+                var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                var jsonFilePath = IOPath.Combine(exportDirectory, $"EventReport_{timestamp}.json");
+
+                var events = _filteredEvents
+                    .Select(e => new
+                    {
+                        e.TimeCreated,
+                        timeCreatedAt = e.TimeCreatedAt,
+                        e.Level,
+                        e.EventId,
+                        e.Source,
+                        e.Message,
+                        e.ExplanationTitle,
+                        tag = e.Tag?.Name
+                    })
+                    .ToList();
+
+                var insights = _insightsService.Build(_filteredEvents);
+                var payload = new
+                {
+                    exportedAt = DateTime.UtcNow,
+                    selectedLog = ((System.Windows.Controls.ComboBoxItem)LogComboBox.SelectedItem)?.Content?.ToString() ?? "System",
+                    count = events.Count,
+                    insights,
+                    events
+                };
+
+                var json = System.Text.Json.JsonSerializer.Serialize(payload, new System.Text.Json.JsonSerializerOptions
+                {
+                    WriteIndented = true
+                });
+
+                await File.WriteAllTextAsync(jsonFilePath, json);
+                TelemetryService.Track("json_export_done", new { count = events.Count });
+                StatusText.Text = $"✓ Export JSON: {IOPath.GetFileName(jsonFilePath)}";
+                MessageBox.Show($"Rapport JSON exporté:\n{jsonFilePath}",
+                                "Export JSON terminé",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                TelemetryService.TrackException("json_export_failed", ex);
+                StatusText.Text = "✗ Erreur export JSON";
+                MessageBox.Show($"Erreur lors de l'export JSON:\n\n{ex.Message}",
+                                "Erreur d'export",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Error);
             }
         }
 
@@ -340,6 +424,11 @@ namespace EventViewer
         private async void MenuItem_ExportCSV_Click(object sender, RoutedEventArgs e)
         {
             await ExportButton_ClickAsync();
+        }
+
+        private async void MenuItem_ExportJson_Click(object sender, RoutedEventArgs e)
+        {
+            await ExportJsonReportAsync();
         }
 
         private void MenuItem_OpenExportFolder_Click(object sender, RoutedEventArgs e)
@@ -467,6 +556,59 @@ namespace EventViewer
                           "Statistiques",
                           MessageBoxButton.OK,
                           MessageBoxImage.Information);
+        }
+
+        private void MenuItem_ViewTimeline_Click(object sender, RoutedEventArgs e)
+        {
+            var timeline = _timelineService.BuildLast24Hours(_allEvents);
+            var lines = timeline
+                .Where(t => t.TotalCount > 0)
+                .Select(t => $"{t.Hour:dd/MM HH}h -> {t.TotalCount} (E:{t.ErrorCount} / A:{t.WarningCount})")
+                .ToList();
+
+            var message = lines.Count == 0
+                ? "Aucun incident sur les 24 dernières heures."
+                : "Incidents sur 24h:\n\n" + string.Join("\n", lines);
+
+            TelemetryService.Track("timeline_view_opened", new { items = lines.Count });
+            MessageBox.Show(message, "Timeline incidents", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void MenuItem_ViewInsights_Click(object sender, RoutedEventArgs e)
+        {
+            var insights = _insightsService.Build(_allEvents);
+            var text = _insightsService.BuildSummary(insights);
+            TelemetryService.Track("insights_view_opened", new { score = insights.RiskScore, severity = insights.SeverityLabel });
+
+            MessageBox.Show(text, "Insights de sévérité", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void MenuItem_ToggleTelemetry_Click(object sender, RoutedEventArgs e)
+        {
+            _settings.TelemetryOptIn = !_settings.TelemetryOptIn;
+            SaveSettings();
+            TelemetryService.Track("telemetry_toggled", new { enabled = _settings.TelemetryOptIn });
+            MessageBox.Show(
+                _settings.TelemetryOptIn
+                    ? "La télémétrie locale est activée (opt-in)."
+                    : "La télémétrie locale est désactivée.",
+                "Préférences",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+
+        private void MenuItem_ToggleAiBeta_Click(object sender, RoutedEventArgs e)
+        {
+            _settings.AiBetaEnabled = !_settings.AiBetaEnabled;
+            SaveSettings();
+            TelemetryService.Track("ai_beta_toggled", new { enabled = _settings.AiBetaEnabled });
+            MessageBox.Show(
+                _settings.AiBetaEnabled
+                    ? "Le mode IA bêta est activé (fallback local si aucune API n'est configurée)."
+                    : "Le mode IA bêta est désactivé.",
+                "Préférences",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
         }
 
         private async void RepairSystemButton_Click(object sender, RoutedEventArgs e)
@@ -707,6 +849,11 @@ namespace EventViewer
 
         private async Task LoadEventsAsync()
         {
+            var stopwatch = Stopwatch.StartNew();
+            _loadEventsCts?.Cancel();
+            _loadEventsCts = new CancellationTokenSource();
+            var cancellationToken = _loadEventsCts.Token;
+
             try
             {
                 StatusText.Text = "Chargement en cours...";
@@ -714,24 +861,28 @@ namespace EventViewer
                 _filteredEvents.Clear();
 
                 var logName = ((System.Windows.Controls.ComboBoxItem)LogComboBox.SelectedItem)?.Content?.ToString() ?? "System";
+                const int maxEventsToLoad = 200;
 
                 // Chargement asynchrone pour ne pas bloquer l'interface
                 var entries = await Task.Run(() =>
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     using EventLog eventLog = new(logName);
                     return eventLog.Entries
                         .Cast<EventLogEntry>()
-                        .Where(e => e.EntryType == EventLogEntryType.Error || 
-                                   e.EntryType == EventLogEntryType.Warning)
+                        .Where(e => e.EntryType == EventLogEntryType.Error ||
+                                    e.EntryType == EventLogEntryType.Warning)
                         .OrderByDescending(e => e.TimeGenerated)
-                        .Take(50)
+                        .Take(maxEventsToLoad)
                         .Select(entry =>
                         {
+                            cancellationToken.ThrowIfCancellationRequested();
                             var explanation = _errorAnalyzer.GetExplanation((int)entry.InstanceId, entry.Source);
                             var tag = _tagDetector.DetectTag(entry.Message, entry.Source);
                             return new EventLogItem
                             {
                                 TimeCreated = entry.TimeGenerated.ToString("dd/MM/yyyy HH:mm"),
+                                TimeCreatedAt = entry.TimeGenerated,
                                 Level = GetLevelText(entry.EntryType),
                                 LevelColor = GetLevelColor(entry.EntryType),
                                 LevelGlyph = GetLevelGlyph(entry.EntryType),
@@ -744,18 +895,17 @@ namespace EventViewer
                             };
                         })
                         .ToList();
-                });
+                }, cancellationToken);
 
-                // Ajout des éléments sur le thread UI
+                cancellationToken.ThrowIfCancellationRequested();
+
                 foreach (var entry in entries)
                 {
                     _allEvents.Add(entry);
                 }
 
-                // Appliquer le filtre (si une recherche est en cours)
                 FilterEvents();
 
-                // Réappliquer le mode comparaison si actif
                 if (_comparisonMode)
                 {
                     var newEventKeys = _snapshotManager.GetNewEventKeys(_allEvents);
@@ -766,10 +916,14 @@ namespace EventViewer
                     }
                 }
 
-                // Redessiner le graphique
                 DrawChart();
-
+                stopwatch.Stop();
+                TelemetryService.Track("events_loaded", new { count = _allEvents.Count, elapsedMs = stopwatch.ElapsedMilliseconds, logName });
                 StatusText.Text = $"✓ {_allEvents.Count} événements chargés";
+            }
+            catch (OperationCanceledException)
+            {
+                StatusText.Text = "Chargement interrompu";
             }
             catch (UnauthorizedAccessException)
             {
@@ -781,6 +935,7 @@ namespace EventViewer
             }
             catch (Exception ex)
             {
+                TelemetryService.TrackException("events_load_failed", ex);
                 StatusText.Text = "✗ Erreur lors du chargement";
                 MessageBox.Show($"Une erreur s'est produite lors du chargement des événements:\n\n{ex.Message}",
                               "Erreur",
@@ -952,28 +1107,18 @@ namespace EventViewer
 
             try
             {
-                // Simuler des données sur 24h (à implémenter avec de vraies données)
+                // Timeline incidents reelle sur 24h.
                 var width = ChartCanvas.ActualWidth;
                 var height = ChartCanvas.ActualHeight;
-                var hours = 24;
-                var barWidth = (width - 20) / hours;
-                var maxErrors = Math.Max(1, _allEvents.Count);
-
-                // Grouper les événements par heure (simulation simple)
-                var random = new Random(DateTime.Now.Hour);
-                var errorCounts = new int[hours];
-                
-                // Distribution des erreurs sur 24h
-                foreach (var evt in _allEvents.Take(50))
-                {
-                    var hourIndex = random.Next(0, hours);
-                    errorCounts[hourIndex]++;
-                }
+                var timeline = _timelineService.BuildLast24Hours(_allEvents);
+                var hours = timeline.Count;
+                var barWidth = (width - 20) / Math.Max(1, hours);
+                var maxErrors = Math.Max(1, timeline.Max(t => t.TotalCount));
 
                 // Dessiner les barres
                 for (int i = 0; i < hours; i++)
                 {
-                    var count = errorCounts[i];
+                    var count = timeline[i].TotalCount;
                     var barHeight = (count / (double)maxErrors) * (height - 40);
 
                     // Barre
@@ -993,7 +1138,7 @@ namespace EventViewer
                     {
                         var label = new TextBlock
                         {
-                            Text = $"{i}h",
+                            Text = $"{timeline[i].Hour:HH}h",
                             FontSize = 10,
                             Foreground = new SolidColorBrush(Color.FromRgb(200, 200, 200))
                         };
@@ -1056,23 +1201,17 @@ namespace EventViewer
             }
         }
 
-        private void AnalyzeWithAI_Click(object sender, RoutedEventArgs e)
+        private async void AnalyzeWithAI_Click(object sender, RoutedEventArgs e)
         {
             if (EventListView.SelectedItem is EventLogItem selectedEvent)
             {
-                var explanation = _errorAnalyzer.GetExplanation(selectedEvent.EventId, selectedEvent.Source);
-                
-                var analysisMessage = $"🤖 ANALYSE IA DE L'ERREUR\n\n" +
-                                    $"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" +
-                                    $"📌 {explanation.Title}\n\n" +
-                                    $"📝 DESCRIPTION :\n{explanation.Description}\n\n" +
-                                    $"💡 SOLUTION RECOMMANDÉE :\n{explanation.Solution}\n\n" +
-                                    $"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" +
-                                    $"ℹ️ DÉTAILS TECHNIQUES\n" +
-                                    $"Event ID : {selectedEvent.EventId}\n" +
-                                    $"Source : {selectedEvent.Source}\n" +
-                                    $"Niveau : {selectedEvent.Level}\n" +
-                                    $"Date : {selectedEvent.TimeCreated}";
+                var analysisMessage = await _aiAssistantService.BuildIncidentSummaryAsync(selectedEvent, _settings.AiBetaEnabled);
+                TelemetryService.Track("ai_analysis_opened", new
+                {
+                    selectedEvent.EventId,
+                    selectedEvent.Source,
+                    aiBeta = _settings.AiBetaEnabled
+                });
 
                 MessageBox.Show(analysisMessage,
                               $"Analyse IA - Événement {selectedEvent.EventId}",
@@ -1156,6 +1295,26 @@ namespace EventViewer
                                   MessageBoxImage.Error);
                 }
             }
+        }
+
+        private void FeedbackPositive_Click(object sender, RoutedEventArgs e)
+        {
+            if (EventListView.SelectedItem is not EventLogItem selectedEvent)
+                return;
+
+            RecommendationFeedbackStore.Add(selectedEvent, useful: true);
+            TelemetryService.Track("recommendation_feedback", new { selectedEvent.EventId, selectedEvent.Source, useful = true });
+            StatusText.Text = "✓ Merci pour votre feedback positif";
+        }
+
+        private void FeedbackNegative_Click(object sender, RoutedEventArgs e)
+        {
+            if (EventListView.SelectedItem is not EventLogItem selectedEvent)
+                return;
+
+            RecommendationFeedbackStore.Add(selectedEvent, useful: false);
+            TelemetryService.Track("recommendation_feedback", new { selectedEvent.EventId, selectedEvent.Source, useful = false });
+            StatusText.Text = "✓ Feedback enregistré";
         }
 
         private async void RepairAction_Click(object sender, RoutedEventArgs e)
@@ -1297,6 +1456,7 @@ namespace EventViewer
     public sealed class EventLogItem
     {
         public required string TimeCreated { get; init; }
+        public DateTime? TimeCreatedAt { get; init; }
         public required string Level { get; init; }
         public required SolidColorBrush LevelColor { get; init; }
         public required string LevelGlyph { get; init; }

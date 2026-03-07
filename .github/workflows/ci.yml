@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore EventViewer.sln
+
+      - name: Build (USB)
+        run: dotnet build EventViewer.sln -c Release --no-restore
+
+      - name: Build (Store flag)
+        run: dotnet build EventViewer.csproj -c Release -p:StoreBuild=true --no-restore
+
+      - name: Test
+        run: dotnet test EventViewer.Tests/EventViewer.Tests.csproj -c Release --no-build --verbosity normal

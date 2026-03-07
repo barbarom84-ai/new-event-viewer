@@ -165,6 +165,7 @@
             <!-- Fichier Menu -->
             <MenuItem Header="📁 _Fichier" Foreground="#856404" FontWeight="SemiBold">
                 <MenuItem Header="💾 _Exporter CSV" Click="MenuItem_ExportCSV_Click" Foreground="#222222"/>
+                <MenuItem Header="🧾 _Exporter Rapport JSON" Click="MenuItem_ExportJson_Click" Foreground="#222222"/>
                 <MenuItem Header="📂 _Ouvrir dossier export" Click="MenuItem_OpenExportFolder_Click" Foreground="#222222"/>
                 <Separator Background="#AAAAAA"/>
                 <MenuItem Header="🚪 _Quitter" Click="MenuItem_Quit_Click" Foreground="#721c24" FontWeight="Bold"/>
@@ -174,9 +175,14 @@
             <MenuItem Header="🔧 _Outils" Foreground="#004085" FontWeight="SemiBold">
                 <MenuItem Header="🤖 _Analyse IA complète" Click="MenuItem_AIAnalysis_Click" Foreground="#222222"/>
                 <MenuItem Header="📊 _Voir Statistiques" Click="MenuItem_ViewStats_Click" Foreground="#222222"/>
+                <MenuItem Header="📈 _Voir Timeline Incidents (24h)" Click="MenuItem_ViewTimeline_Click" Foreground="#222222"/>
+                <MenuItem Header="🧠 _Voir Insights de Sévérité" Click="MenuItem_ViewInsights_Click" Foreground="#222222"/>
                 <Separator Background="#AAAAAA"/>
                 <MenuItem Header="📷 _Créer Snapshot" Click="CreateSnapshotButton_Click" Foreground="#222222"/>
                 <MenuItem Header="🔍 _Comparer avec Snapshot" Click="CompareButton_Click" Foreground="#222222"/>
+                <Separator Background="#AAAAAA"/>
+                <MenuItem Header="📡 _Basculer télémétrie (opt-in)" Click="MenuItem_ToggleTelemetry_Click" Foreground="#222222"/>
+                <MenuItem Header="🧪 _Basculer IA bêta" Click="MenuItem_ToggleAiBeta_Click" Foreground="#222222"/>
                 <Separator Background="#AAAAAA"/>
                 <MenuItem x:Name="AutoRefreshMenuItem" Header="⏸️ Actualisation Auto: OFF" Click="ToggleAutoRefreshMenuItem_Click" Foreground="#856404" FontWeight="Bold"/>
             </MenuItem>
@@ -404,6 +410,17 @@
                                       Foreground="{StaticResource TextBrush}"
                                       Background="{StaticResource SurfaceBrush}"/>
                             
+                            <Separator Background="{StaticResource BorderBrush}"/>
+
+                            <MenuItem Header="👍 Recommandation utile"
+                                      Click="FeedbackPositive_Click"
+                                      Foreground="{StaticResource TextBrush}"
+                                      Background="{StaticResource SurfaceBrush}"/>
+                            <MenuItem Header="👎 Recommandation non utile"
+                                      Click="FeedbackNegative_Click"
+                                      Foreground="{StaticResource TextBrush}"
+                                      Background="{StaticResource SurfaceBrush}"/>
+
                             <Separator Background="{StaticResource BorderBrush}"/>
                             
                             <MenuItem x:Name="RepairActionMenuItem"
