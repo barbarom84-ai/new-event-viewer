@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap rescap">
+
+  <!-- IMPORTANT:
+       These values must be aligned with your Partner Center "Package/Publisher" identity before Store submission. -->
+  <Identity
+    Name="barbarom84ai.EventBeaconTool"
+    Publisher="CN=EventBeaconTool"
+    Version="1.0.0.0" />
+
+  <Properties>
+    <DisplayName>EventBeacon Tool</DisplayName>
+    <PublisherDisplayName>EventBeacon Tool</PublisherDisplayName>
+    <Logo>Images\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="fr-FR" />
+  </Resources>
+
+  <Applications>
+    <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="EventBeacon Tool"
+        Description="Observateur d'événements moderne avec tags, conseils et export."
+        BackgroundColor="transparent"
+        Square150x150Logo="Images\Square150x150Logo.png"
+        Square44x44Logo="Images\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Images\Square150x150Logo.png" />
+      </uap:VisualElements>
+    </Application>
+  </Applications>
+
+  <!-- No special capabilities by default -->
+  <Capabilities>
+  </Capabilities>
+</Package>
+
+

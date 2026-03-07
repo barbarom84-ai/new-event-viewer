@@ -20,5 +20,10 @@
     <OptimizationPreference>Speed</OptimizationPreference>
   </PropertyGroup>
 
+  <!-- Build flag for Microsoft Store packaging -->
+  <PropertyGroup Condition="'$(StoreBuild)'=='true'">
+    <DefineConstants>$(DefineConstants);STORE_BUILD</DefineConstants>
+  </PropertyGroup>
+
 </Project>
 

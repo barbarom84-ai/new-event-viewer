@@ -16,8 +16,7 @@ namespace EventViewer
 
         public SnapshotManager()
         {
-            var appDirectory = AppDomain.CurrentDomain.BaseDirectory;
-            _snapshotPath = Path.Combine(appDirectory, SnapshotFileName);
+            _snapshotPath = AppPaths.SnapshotFilePath;
         }
 
         /// <summary>
@@ -25,6 +24,9 @@ namespace EventViewer
         /// </summary>
         public void CreateSnapshot(IEnumerable<EventLogItem> events)
         {
+            // S'assure que le dossier cible existe (Store-friendly / USB)
+            AppPaths.EnsureDirectory(Path.GetDirectoryName(_snapshotPath) ?? AppPaths.StateDirectory);
+
             var snapshot = new EventSnapshot
             {
                 CreatedAt = DateTime.Now,

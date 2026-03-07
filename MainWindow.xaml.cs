@@ -69,6 +69,29 @@ namespace EventViewer
             UpdateSnapshotStatus();
             DrawChart();
             UpdateAdminStatus();
+
+            ApplyStoreBuildUiRules();
+        }
+
+        private static bool IsStoreBuild()
+        {
+#if STORE_BUILD
+            return true;
+#else
+            return false;
+#endif
+        }
+
+        private void ApplyStoreBuildUiRules()
+        {
+            if (!IsStoreBuild())
+                return;
+
+            // Désactive/masque les fonctionnalités nécessitant des privilèges ou non conformes Store
+            if (MaintenanceMenu != null)
+            {
+                MaintenanceMenu.Visibility = Visibility.Collapsed;
+            }
         }
 
         private void SearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
@@ -153,8 +176,9 @@ namespace EventViewer
                 // Enregistrer le provider d'encodage pour Windows-1252 (ANSI)
                 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
-                // Obtenir le répertoire de l'exécutable (sur la clé USB)
-                var exePath = AppDomain.CurrentDomain.BaseDirectory;
+                // Dossier d'export (Store-friendly vs USB)
+                var exePath = AppPaths.ExportDirectory;
+                AppPaths.EnsureDirectory(exePath);
                 var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
 
                 // Capture des données UI sur le thread principal avant l'export en arrière-plan
@@ -322,7 +346,8 @@ namespace EventViewer
         {
             try
             {
-                var exePath = AppDomain.CurrentDomain.BaseDirectory;
+                var exePath = AppPaths.ExportDirectory;
+                AppPaths.EnsureDirectory(exePath);
                 Process.Start(new ProcessStartInfo
                 {
                     FileName = exePath,
@@ -446,6 +471,16 @@ namespace EventViewer
 
         private async void RepairSystemButton_Click(object sender, RoutedEventArgs e)
         {
+            if (IsStoreBuild())
+            {
+                MessageBox.Show("Cette fonctionnalité n'est pas disponible dans la version Microsoft Store.\n\n" +
+                              "Veuillez utiliser la version USB/Admin pour accéder aux outils de maintenance.",
+                              "Indisponible dans le Store",
+                              MessageBoxButton.OK,
+                              MessageBoxImage.Information);
+                return;
+            }
+
             if (!SystemMaintenanceHelper.IsRunningAsAdministrator())
             {
                 MessageBox.Show("Cette opération nécessite des privilèges administrateur.\n\n" +
@@ -514,6 +549,16 @@ namespace EventViewer
 
         private async void FlushDnsButton_Click(object sender, RoutedEventArgs e)
         {
+            if (IsStoreBuild())
+            {
+                MessageBox.Show("Cette fonctionnalité n'est pas disponible dans la version Microsoft Store.\n\n" +
+                              "Veuillez utiliser la version USB/Admin pour accéder aux outils de maintenance.",
+                              "Indisponible dans le Store",
+                              MessageBoxButton.OK,
+                              MessageBoxImage.Information);
+                return;
+            }
+
             if (!SystemMaintenanceHelper.IsRunningAsAdministrator())
             {
                 MessageBox.Show("Cette opération nécessite des privilèges administrateur.\n\n" +
@@ -565,6 +610,16 @@ namespace EventViewer
 
         private async void ResetNetworkButton_Click(object sender, RoutedEventArgs e)
         {
+            if (IsStoreBuild())
+            {
+                MessageBox.Show("Cette fonctionnalité n'est pas disponible dans la version Microsoft Store.\n\n" +
+                              "Veuillez utiliser la version USB/Admin pour accéder aux outils de maintenance.",
+                              "Indisponible dans le Store",
+                              MessageBoxButton.OK,
+                              MessageBoxImage.Information);
+                return;
+            }
+
             if (!SystemMaintenanceHelper.IsRunningAsAdministrator())
             {
                 MessageBox.Show("Cette opération nécessite des privilèges administrateur.\n\n" +
@@ -1107,6 +1162,16 @@ namespace EventViewer
         {
             if (EventListView.SelectedItem is not EventLogItem selectedEvent)
                 return;
+
+            if (IsStoreBuild())
+            {
+                MessageBox.Show("Les actions de réparation ne sont pas disponibles dans la version Microsoft Store.\n\n" +
+                              "Veuillez utiliser la version USB/Admin pour lancer CHKDSK ou réinitialiser l'IP.",
+                              "Indisponible dans le Store",
+                              MessageBoxButton.OK,
+                              MessageBoxImage.Information);
+                return;
+            }
 
             var action = RepairActionMenuItem.Tag?.ToString();
 

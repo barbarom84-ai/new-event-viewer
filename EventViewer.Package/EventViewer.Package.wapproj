@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <ProjectGuid>{2F6A8D2A-8E7A-4F9C-9C5F-2E2F7D9E9A10}</ProjectGuid>
+    <TargetPlatformVersion>10.0.19041.0</TargetPlatformVersion>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <DefaultLanguage>fr-FR</DefaultLanguage>
+
+    <!-- Packaging behavior -->
+    <EntryPointProjectUniqueName>EventViewer.csproj</EntryPointProjectUniqueName>
+    <AppxPackageSigningEnabled>false</AppxPackageSigningEnabled>
+    <GenerateAppxPackageOnBuild>false</GenerateAppxPackageOnBuild>
+    <AppxBundle>Never</AppxBundle>
+    <AppxPackageDir>AppPackages\</AppxPackageDir>
+
+    <!-- Propagate a build flag to the entrypoint project to disable admin-only features in Store builds -->
+    <StoreBuild>true</StoreBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AppxManifest Include="Package.appxmanifest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EventViewer.csproj">
+      <Name>EventViewer</Name>
+    </ProjectReference>
+  </ItemGroup>
+
+  <!-- Basic logo wiring (you can replace with proper Store assets later) -->
+  <ItemGroup>
+    <Content Include="..\assets\icon.png">
+      <Link>Images\Square150x150Logo.png</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\assets\icon.png">
+      <Link>Images\Square44x44Logo.png</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\assets\icon.png">
+      <Link>Images\StoreLogo.png</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <Import Project="$(MSBuildExtensionsPath)\Microsoft\DesktopBridge\Microsoft.DesktopBridge.props" Condition="Exists('$(MSBuildExtensionsPath)\Microsoft\DesktopBridge\Microsoft.DesktopBridge.props')" />
+  <Import Project="$(MSBuildExtensionsPath)\Microsoft\DesktopBridge\Microsoft.DesktopBridge.targets" Condition="Exists('$(MSBuildExtensionsPath)\Microsoft\DesktopBridge\Microsoft.DesktopBridge.targets')" />
+</Project>
+
+

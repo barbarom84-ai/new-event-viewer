@@ -182,10 +182,10 @@
             </MenuItem>
             
             <!-- Maintenance Menu -->
-            <MenuItem Header="⚡ _Maintenance" Foreground="#155724" FontWeight="SemiBold">
-                <MenuItem Header="🛠️ Lancer SFC /scannow" Click="RepairSystemButton_Click" Foreground="#155724" FontWeight="SemiBold"/>
-                <MenuItem Header="🌐 Flush DNS" Click="FlushDnsButton_Click" Foreground="#004085"/>
-                <MenuItem Header="🔄 Réinitialiser Réseau" Click="ResetNetworkButton_Click" Foreground="#856404"/>
+            <MenuItem x:Name="MaintenanceMenu" Header="⚡ _Maintenance" Foreground="#155724" FontWeight="SemiBold">
+                <MenuItem x:Name="MaintenanceSfcItem" Header="🛠️ Lancer SFC /scannow" Click="RepairSystemButton_Click" Foreground="#155724" FontWeight="SemiBold"/>
+                <MenuItem x:Name="MaintenanceFlushDnsItem" Header="🌐 Flush DNS" Click="FlushDnsButton_Click" Foreground="#004085"/>
+                <MenuItem x:Name="MaintenanceResetNetworkItem" Header="🔄 Réinitialiser Réseau" Click="ResetNetworkButton_Click" Foreground="#856404"/>
             </MenuItem>
             
             <!-- Right-aligned status items -->
