@@ -1,4 +1,4 @@
-using EventViewer;
+using EventViewer.Core;
 
 namespace EventViewer.Tests;
 

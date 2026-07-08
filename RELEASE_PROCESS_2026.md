@@ -1,39 +1,44 @@
 # Release Process 2026
 
-Ce document formalise le cycle de release mensuel (stable + preview) et la revue KPI.
+Cycle de release mensuel (stable + preview) pour **EventViewer.WinUI**.
 
 ## Cadence
 
-- Semaine 1: gel fonctionnel + triage crashs.
-- Semaine 2: release preview (workflow `Preview Build`).
-- Semaine 3: correction regressions + validation support.
-- Semaine 4: release stable + notes de version.
+- Semaine 1: gel fonctionnel + triage crashs
+- Semaine 2: release preview
+- Semaine 3: correction regressions + validation support
+- Semaine 4: release stable + `RELEASE_NOTES.md`
 
-## Checklist de non-regression
+## Checklist de non-régression
 
-1. Build USB (`dotnet build EventViewer.sln -c Release`).
-2. Build Store flag (`dotnet build EventViewer.csproj -c Release -p:StoreBuild=true`).
-3. Tests unitaires (`dotnet test EventViewer.Tests/EventViewer.Tests.csproj -c Release`).
-4. Test manuel:
-   - chargement `System/Application/Security`
+1. `dotnet build EventViewer.Core/EventViewer.Core.csproj -c Release`
+2. `dotnet build EventViewer.WinUI/EventViewer.WinUI.csproj -c Release -p:Platform=x64`
+3. `dotnet build EventViewer.WinUI/EventViewer.WinUI.csproj -c Release -p:Platform=x64 -p:StoreBuild=true`
+4. `dotnet test EventViewer.Tests/EventViewer.Tests.csproj -c Release`
+5. Publish smoke :
+   - `build_winui_usb.bat`
+   - `build_winui_store.bat`
+6. Tests manuels :
+   - chargement Système / Applications / Sécurité
    - export CSV + JSON
-   - snapshot + comparaison
-   - timeline incidents + insights severite
-   - menu maintenance masque en Store
-5. Vérifier télémétrie opt-in (activée/désactivée) et feedback recommandations.
+   - snapshot + nouveautés
+   - timeline + bandeau santé
+   - feedback Utile / Pas utile
+   - télémétrie ON/OFF
+   - IA locale ; cloud uniquement si clé de test
+   - maintenance visible en USB, masquée en Store
+7. WPF legacy (optionnel) : build `EventViewer.csproj` tant qu’il reste dans la solution
+8. Avant Store : Identity Partner Center, captures (`STORE_SCREENSHOTS.md`), URL privacy, WACK
 
 ## Notes de version
 
-- Utiliser le format:
-  - Added
-  - Changed
-  - Fixed
-  - Known Issues
+Mettre à jour `RELEASE_NOTES.md` (Added / Changed / Fixed / Known Issues).
 
 ## KPI (revue mensuelle)
 
-- Crash/session
-- Temps chargement moyen des événements
-- Utilisation export JSON
-- Taux d'usage insights/timeline
-- Feedback utile/non-utile des recommandations
+- Crash / session
+- Temps de chargement moyen
+- Usage export JSON
+- Usage insights / timeline / snapshot
+- Ratio feedback utile / non utile
+- Ratio résumés cloud vs local (si IA activée)

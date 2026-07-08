@@ -1,5 +1,4 @@
-using EventViewer;
-using System.Windows.Media;
+using EventViewer.Core;
 
 namespace EventViewer.Tests;
 
@@ -8,7 +7,7 @@ public class InsightsServiceTests
     [Fact]
     public void Build_ComputesRiskScoreAndSeverity()
     {
-        var events = new List<EventLogItem>
+        var events = new List<EventItem>
         {
             CreateItem("Erreur", "Disk"),
             CreateItem("Erreur", "Disk"),
@@ -20,26 +19,34 @@ public class InsightsServiceTests
 
         Assert.True(insights.RiskScore > 0);
         Assert.False(string.IsNullOrWhiteSpace(insights.SeverityLabel));
+        Assert.False(string.IsNullOrWhiteSpace(insights.HealthHeadline));
         Assert.NotEmpty(insights.TopSources);
     }
 
-    private static EventLogItem CreateItem(string level, string source)
+    [Fact]
+    public void HealthCopy_NoviceSeverity_MapsForNovices()
     {
-        return new EventLogItem
+        Assert.Equal("Critique", HealthCopy.NoviceSeverity("Erreur"));
+        Assert.Equal("À surveiller", HealthCopy.NoviceSeverity("Avertissement"));
+        Assert.Equal("Info", HealthCopy.NoviceSeverity("Information"));
+    }
+
+    private static EventItem CreateItem(string level, string source)
+    {
+        return new EventItem
         {
             TimeCreated = DateTime.Now.ToString("dd/MM/yyyy HH:mm"),
             TimeCreatedAt = DateTime.Now,
             Level = level,
-            LevelColor = Brushes.Gold,
-            LevelGlyph = "!",
             Message = "message",
+            FullMessage = "message",
             Source = source,
             EventId = 1000,
             Tag = new TagInfo
             {
                 Name = "RÉSEAU",
-                Keywords = new[] { "dns" },
-                Color = Colors.Blue,
+                Keywords = ["dns"],
+                ColorHex = "#FF2196F3",
                 Advice = "advice"
             }
         };

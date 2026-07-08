@@ -1,0 +1,523 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Page
+    x:Class="EventViewer.WinUI.Views.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:core="using:EventViewer.Core"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="using:EventViewer.WinUI.ViewModels"
+    mc:Ignorable="d"
+    Background="{StaticResource AppBackgroundBrush}"
+    NavigationCacheMode="Disabled">
+
+    <Grid Padding="20" RowSpacing="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Health banner + actions -->
+        <Border
+            Grid.Row="0"
+            Background="{StaticResource AppSurfaceBrush}"
+            BorderBrush="{StaticResource AppBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="12"
+            Padding="18">
+            <Grid ColumnSpacing="16" RowSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Column="0" Spacing="4">
+                    <TextBlock
+                        FontSize="12"
+                        Foreground="{StaticResource AppMutedBrush}"
+                        Text="État de votre PC" />
+                    <TextBlock
+                        FontSize="28"
+                        FontWeight="SemiBold"
+                        Foreground="{StaticResource AppTextBrush}"
+                        Text="{x:Bind ViewModel.HealthHeadline, Mode=OneWay}" />
+                    <TextBlock
+                        FontSize="14"
+                        Foreground="{StaticResource AppMutedBrush}"
+                        Text="{x:Bind ViewModel.HealthSubtitle, Mode=OneWay}"
+                        TextWrapping="WrapWholeWords" />
+                    <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,8,0,0">
+                        <TextBlock FontSize="13" Foreground="{StaticResource AppCriticalBrush}">
+                            <Run Text="{x:Bind ViewModel.ErrorCount, Mode=OneWay}" />
+                            <Run Text=" erreurs" />
+                        </TextBlock>
+                        <TextBlock FontSize="13" Foreground="{StaticResource AppWarningBrush}">
+                            <Run Text="{x:Bind ViewModel.WarningCount, Mode=OneWay}" />
+                            <Run Text=" avertissements" />
+                        </TextBlock>
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Spacing="8">
+                    <TextBlock
+                        FontSize="12"
+                        Foreground="{StaticResource AppMutedBrush}"
+                        Text="Activité des dernières 24 h" />
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.TimelineBuckets, Mode=OneWay}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="3" VerticalAlignment="Bottom" Height="56" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="core:IncidentBucket">
+                                <Border
+                                    Width="10"
+                                    Height="{x:Bind BarHeight}"
+                                    VerticalAlignment="Bottom"
+                                    CornerRadius="3"
+                                    ToolTipService.ToolTip="{x:Bind TotalCount}">
+                                    <Border.Background>
+                                        <SolidColorBrush Color="#FF3DDC97" Opacity="0.85" />
+                                    </Border.Background>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <Grid Grid.Row="1" Grid.ColumnSpan="2" ColumnSpacing="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="220" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <ComboBox
+                        Grid.Column="0"
+                        Width="160"
+                        Header="Journal"
+                        ItemsSource="{x:Bind ViewModel.LogOptions}"
+                        SelectedItem="{x:Bind ViewModel.SelectedLog, Mode=TwoWay}"
+                        DisplayMemberPath="DisplayName" />
+
+                    <TextBox
+                        Grid.Column="1"
+                        Header="Recherche"
+                        PlaceholderText="Disque, réseau, mémoire…"
+                        Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <Button
+                        Grid.Column="3"
+                        Content="Actualiser"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        Command="{x:Bind ViewModel.LoadCommand}" />
+
+                    <Button
+                        Grid.Column="4"
+                        Content="Exporter CSV"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Command="{x:Bind ViewModel.ExportCsvCommand}" />
+
+                    <Button
+                        Grid.Column="5"
+                        Content="Exporter JSON"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Command="{x:Bind ViewModel.ExportJsonCommand}" />
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- Tools: snapshot, settings, maintenance -->
+        <Border
+            Grid.Row="1"
+            Background="{StaticResource AppSurfaceBrush}"
+            BorderBrush="{StaticResource AppBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="12"
+            Padding="14,12">
+            <Grid ColumnSpacing="16" RowSpacing="10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Comparer dans le temps" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource AppMutedBrush}" />
+                    <TextBlock Text="{x:Bind ViewModel.SnapshotStatus, Mode=OneWay}" FontSize="13" Foreground="{StaticResource AppTextBrush}" TextWrapping="WrapWholeWords" />
+                    <TextBlock
+                        Text="{x:Bind ViewModel.ComparisonLabel, Mode=OneWay}"
+                        FontSize="12"
+                        Foreground="{StaticResource AppAccentBrush}"
+                        Visibility="{x:Bind ViewModel.ComparisonActive, Mode=OneWay, Converter={StaticResource BoolToVis}}"
+                        TextWrapping="WrapWholeWords" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="Enregistrer un point" Style="{StaticResource SecondaryButtonStyle}" Command="{x:Bind ViewModel.CreateSnapshotCommand}" />
+                        <Button Content="Voir les nouveautés" Style="{StaticResource SecondaryButtonStyle}" Command="{x:Bind ViewModel.CompareSnapshotCommand}" IsEnabled="{x:Bind ViewModel.HasSnapshot, Mode=OneWay}" />
+                        <Button Content="Tout afficher" Style="{StaticResource SecondaryButtonStyle}" Command="{x:Bind ViewModel.ClearComparisonCommand}" Visibility="{x:Bind ViewModel.ComparisonActive, Mode=OneWay, Converter={StaticResource BoolToVis}}" />
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Spacing="8">
+                    <TextBlock Text="Options" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource AppMutedBrush}" />
+                    <ToggleSwitch
+                        Header="Télémétrie locale (opt-in)"
+                        OnContent="Activée"
+                        OffContent="Désactivée"
+                        IsOn="{x:Bind ViewModel.TelemetryOptIn, Mode=TwoWay}" />
+                    <ToggleSwitch
+                        Header="IA bêta"
+                        OnContent="Activée"
+                        OffContent="Désactivée"
+                        IsOn="{x:Bind ViewModel.AiBetaEnabled, Mode=TwoWay}" />
+                    <TextBox
+                        Header="Endpoint IA (optionnel)"
+                        PlaceholderText="https://api.openai.com/v1/chat/completions"
+                        Text="{x:Bind ViewModel.AiEndpoint, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBox
+                        Header="Modèle IA"
+                        PlaceholderText="gpt-4o-mini"
+                        Text="{x:Bind ViewModel.AiModel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Text="{x:Bind ViewModel.AiCloudStatus, Mode=OneWay}" FontSize="12" Foreground="{StaticResource AppMutedBrush}" TextWrapping="WrapWholeWords" />
+                    <TextBlock Text="La clé API se configure via la variable d'environnement EVENTVIEWER_AI_API_KEY (recommandé)." FontSize="11" Foreground="{StaticResource AppMutedBrush}" TextWrapping="WrapWholeWords" />
+                    <TextBlock Text="{x:Bind ViewModel.ToolsStatus, Mode=OneWay}" FontSize="12" Foreground="{StaticResource AppMutedBrush}" />
+                </StackPanel>
+
+                <StackPanel
+                    Grid.Column="2"
+                    Spacing="8"
+                    Visibility="{x:Bind ViewModel.ShowMaintenance, Mode=OneWay, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Text="Maintenance" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource AppMutedBrush}" />
+                    <TextBlock Text="Actions utiles si vous avez un souci précis. Admin requis." FontSize="12" Foreground="{StaticResource AppMutedBrush}" TextWrapping="WrapWholeWords" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="Vider le DNS" Style="{StaticResource SecondaryButtonStyle}" Command="{x:Bind ViewModel.FlushDnsCommand}" IsEnabled="{x:Bind ViewModel.CanRunMaintenance, Mode=OneWay}" />
+                        <Button Content="Réparer fichiers (SFC)" Style="{StaticResource SecondaryButtonStyle}" Command="{x:Bind ViewModel.RunSfcCommand}" IsEnabled="{x:Bind ViewModel.CanRunMaintenance, Mode=OneWay}" />
+                        <Button Content="Reset réseau" Style="{StaticResource SecondaryButtonStyle}" Command="{x:Bind ViewModel.ResetNetworkCommand}" IsEnabled="{x:Bind ViewModel.CanRunMaintenance, Mode=OneWay}" />
+                    </StackPanel>
+                    <TextBlock
+                        Text="{x:Bind ViewModel.MaintenanceMessage, Mode=OneWay}"
+                        FontSize="12"
+                        Foreground="{StaticResource AppAccentBrush}"
+                        TextWrapping="WrapWholeWords"
+                        Visibility="{x:Bind ViewModel.HasMaintenanceMessage, Mode=OneWay, Converter={StaticResource BoolToVis}}" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Admin info bar -->
+        <InfoBar
+            Grid.Row="2"
+            IsOpen="{x:Bind ViewModel.NeedsAdminElevation, Mode=OneWay}"
+            IsClosable="False"
+            Severity="Warning"
+            Title="Droits administrateur recommandés"
+            Message="Pour lire tous les journaux Windows et lancer la maintenance, lancez l'application en tant qu'administrateur." />
+
+        <!-- Main split: list + detail -->
+        <Grid Grid.Row="3" ColumnSpacing="14">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.1*" />
+                <ColumnDefinition Width="0.9*" />
+            </Grid.ColumnDefinitions>
+
+            <Border
+                Grid.Column="0"
+                Background="{StaticResource AppSurfaceBrush}"
+                BorderBrush="{StaticResource AppBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="12"
+                Padding="8">
+                <Grid>
+                    <ListView
+                        x:Name="IncidentList"
+                        Background="Transparent"
+                        SelectionMode="Single"
+                        ItemsSource="{x:Bind ViewModel.Incidents, Mode=OneWay}"
+                        SelectedItem="{x:Bind ViewModel.SelectedIncident, Mode=TwoWay}"
+                        Visibility="{x:Bind ViewModel.IsEmpty, Mode=OneWay, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="vm:IncidentCardViewModel">
+                                <Border Padding="12,10" Margin="2,4">
+                                    <Grid ColumnSpacing="12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <Border
+                                            Width="10"
+                                            Height="10"
+                                            CornerRadius="5"
+                                            VerticalAlignment="Top"
+                                            Margin="0,6,0,0"
+                                            Background="{StaticResource AppCriticalBrush}"
+                                            Visibility="{x:Bind IsCritical, Converter={StaticResource BoolToVis}}" />
+                                        <Border
+                                            Width="10"
+                                            Height="10"
+                                            CornerRadius="5"
+                                            VerticalAlignment="Top"
+                                            Margin="0,6,0,0"
+                                            Background="{StaticResource AppWarningBrush}"
+                                            Visibility="{x:Bind IsWarning, Converter={StaticResource BoolToVis}}" />
+
+                                        <StackPanel Grid.Column="1" Spacing="4">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <Border
+                                                    Background="#334CAF50"
+                                                    CornerRadius="6"
+                                                    Padding="8,2"
+                                                    VerticalAlignment="Center"
+                                                    Visibility="{x:Bind IsNew, Converter={StaticResource BoolToVis}}">
+                                                    <TextBlock Text="Nouveau" FontSize="11" FontWeight="SemiBold" Foreground="#FF4CAF50" />
+                                                </Border>
+                                                <TextBlock
+                                                    Text="{x:Bind Title}"
+                                                    FontSize="15"
+                                                    FontWeight="SemiBold"
+                                                    Foreground="{StaticResource AppTextBrush}"
+                                                    TextWrapping="WrapWholeWords" />
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <Border Background="#33FF6B6B" CornerRadius="6" Padding="8,2" Visibility="{x:Bind IsCritical, Converter={StaticResource BoolToVis}}">
+                                                    <TextBlock Text="{x:Bind SeverityLabel}" FontSize="11" Foreground="{StaticResource AppCriticalBrush}" />
+                                                </Border>
+                                                <Border Background="#33FFC857" CornerRadius="6" Padding="8,2" Visibility="{x:Bind IsWarning, Converter={StaticResource BoolToVis}}">
+                                                    <TextBlock Text="{x:Bind SeverityLabel}" FontSize="11" Foreground="{StaticResource AppWarningBrush}" />
+                                                </Border>
+                                                <TextBlock
+                                                    Text="{x:Bind SecondaryInfo}"
+                                                    FontSize="12"
+                                                    Foreground="{StaticResource AppMutedBrush}" />
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <TextBlock
+                                            Grid.Column="2"
+                                            Text="{x:Bind RelativeTime}"
+                                            FontSize="12"
+                                            Foreground="{StaticResource AppMutedBrush}"
+                                            VerticalAlignment="Top" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+
+                    <StackPanel
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Spacing="8"
+                        Visibility="{x:Bind ViewModel.IsEmpty, Mode=OneWay, Converter={StaticResource BoolToVis}}">
+                        <TextBlock
+                            Text="{x:Bind ViewModel.EmptyTitle, Mode=OneWay}"
+                            FontSize="20"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource AppTextBrush}"
+                            HorizontalAlignment="Center" />
+                        <TextBlock
+                            Text="{x:Bind ViewModel.EmptyMessage, Mode=OneWay}"
+                            FontSize="14"
+                            Foreground="{StaticResource AppMutedBrush}"
+                            TextWrapping="WrapWholeWords"
+                            HorizontalAlignment="Center"
+                            MaxWidth="360"
+                            TextAlignment="Center" />
+                    </StackPanel>
+
+                    <ProgressRing
+                        Width="48"
+                        Height="48"
+                        IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}"
+                        Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BoolToVis}}"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center" />
+                </Grid>
+            </Border>
+
+            <!-- Detail panel -->
+            <Border
+                Grid.Column="1"
+                Background="{StaticResource AppSurfaceBrush}"
+                BorderBrush="{StaticResource AppBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="12"
+                Padding="18">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Spacing="14">
+                        <TextBlock Text="Comprendre" Style="{StaticResource SectionTitleStyle}" />
+
+                        <TextBlock
+                            Text="Que faire"
+                            FontSize="12"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource AppAccentBrush}" />
+                        <Border
+                            Background="#1A3DDC97"
+                            BorderBrush="{StaticResource AppAccentBrush}"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="14">
+                            <StackPanel Spacing="10">
+                                <TextBlock
+                                    Text="{x:Bind ViewModel.Detail.Action, Mode=OneWay}"
+                                    FontSize="15"
+                                    Foreground="{StaticResource AppTextBrush}"
+                                    TextWrapping="WrapWholeWords" />
+
+                                <Border
+                                    Background="{StaticResource AppSurfaceElevatedBrush}"
+                                    CornerRadius="8"
+                                    Padding="12"
+                                    Visibility="{x:Bind ViewModel.Detail.HasAutoFix, Mode=OneWay, Converter={StaticResource BoolToVis}}">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="Correction en 1 clic" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource AppAccentBrush}" />
+                                        <TextBlock Text="{x:Bind ViewModel.Detail.AutoFixTitle, Mode=OneWay}" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource AppTextBrush}" TextWrapping="WrapWholeWords" />
+                                        <TextBlock Text="{x:Bind ViewModel.Detail.AutoFixExplanation, Mode=OneWay}" FontSize="13" Foreground="{StaticResource AppMutedBrush}" TextWrapping="WrapWholeWords" />
+                                        <Button
+                                            Content="{x:Bind ViewModel.Detail.AutoFixButtonLabel, Mode=OneWay}"
+                                            Style="{StaticResource PrimaryButtonStyle}"
+                                            HorizontalAlignment="Left"
+                                            Click="OnAutoFixClick"
+                                            IsEnabled="{x:Bind ViewModel.CanExecuteAutoFix, Mode=OneWay}"
+                                            Visibility="{x:Bind ViewModel.Detail.CanRunAutoFix, Mode=OneWay, Converter={StaticResource BoolToVis}}" />
+                                        <TextBlock
+                                            Text="{x:Bind ViewModel.Detail.AutoFixResult, Mode=OneWay}"
+                                            FontSize="12"
+                                            Foreground="{StaticResource AppAccentBrush}"
+                                            TextWrapping="WrapWholeWords"
+                                            Visibility="{x:Bind ViewModel.Detail.HasAutoFixResult, Mode=OneWay, Converter={StaticResource BoolToVis}}" />
+                                    </StackPanel>
+                                </Border>
+
+                                <StackPanel
+                                    Orientation="Horizontal"
+                                    Spacing="8"
+                                    Visibility="{x:Bind ViewModel.Detail.HasSelection, Mode=OneWay, Converter={StaticResource BoolToVis}}">
+                                    <TextBlock Text="Cette recommandation vous aide ?" FontSize="12" Foreground="{StaticResource AppMutedBrush}" VerticalAlignment="Center" />
+                                    <Button Content="Utile" Style="{StaticResource SecondaryButtonStyle}" Command="{x:Bind ViewModel.FeedbackUsefulCommand}" />
+                                    <Button Content="Pas utile" Style="{StaticResource SecondaryButtonStyle}" Command="{x:Bind ViewModel.FeedbackNotUsefulCommand}" />
+                                </StackPanel>
+                                <TextBlock
+                                    Text="{x:Bind ViewModel.Detail.FeedbackMessage, Mode=OneWay}"
+                                    FontSize="12"
+                                    Foreground="{StaticResource AppAccentBrush}"
+                                    Visibility="{x:Bind ViewModel.Detail.HasFeedbackMessage, Mode=OneWay, Converter={StaticResource BoolToVis}}" />
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock
+                            Text="En bref"
+                            FontSize="12"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource AppMutedBrush}" />
+                        <TextBlock
+                            Text="{x:Bind ViewModel.Detail.Headline, Mode=OneWay}"
+                            FontSize="22"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource AppTextBrush}"
+                            TextWrapping="WrapWholeWords" />
+
+                        <TextBlock
+                            Text="Ce que ça signifie"
+                            FontSize="12"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource AppMutedBrush}" />
+                        <TextBlock
+                            Text="{x:Bind ViewModel.Detail.Meaning, Mode=OneWay}"
+                            FontSize="14"
+                            Foreground="{StaticResource AppTextBrush}"
+                            TextWrapping="WrapWholeWords"
+                            LineHeight="22" />
+
+                        <TextBlock
+                            Text="{x:Bind ViewModel.Detail.MetaLine, Mode=OneWay}"
+                            FontSize="12"
+                            Foreground="{StaticResource AppMutedBrush}"
+                            TextWrapping="WrapWholeWords" />
+
+                        <Button
+                            Content="Résumer cet incident"
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            HorizontalAlignment="Left"
+                            Command="{x:Bind ViewModel.ExplainSelectedCommand}"
+                            Visibility="{x:Bind ViewModel.Detail.HasSelection, Mode=OneWay, Converter={StaticResource BoolToVis}}" />
+
+                        <Border
+                            Background="{StaticResource AppSurfaceElevatedBrush}"
+                            CornerRadius="8"
+                            Padding="12"
+                            Visibility="{x:Bind ViewModel.Detail.HasAssistantSummary, Mode=OneWay, Converter={StaticResource BoolToVis}}">
+                            <TextBlock
+                                Text="{x:Bind ViewModel.Detail.AssistantSummary, Mode=OneWay}"
+                                FontSize="13"
+                                Foreground="{StaticResource AppTextBrush}"
+                                TextWrapping="WrapWholeWords"
+                                IsTextSelectionEnabled="True" />
+                        </Border>
+
+                        <HyperlinkButton
+                            Content="Afficher le détail technique"
+                            Click="OnToggleTechnicalClick"
+                            Visibility="{x:Bind ViewModel.Detail.HasSelection, Mode=OneWay, Converter={StaticResource BoolToVis}}" />
+
+                        <Border
+                            Background="{StaticResource AppSurfaceElevatedBrush}"
+                            CornerRadius="8"
+                            Padding="12"
+                            Visibility="{x:Bind ViewModel.Detail.ShowTechnical, Mode=OneWay, Converter={StaticResource BoolToVis}}">
+                            <TextBlock
+                                Text="{x:Bind ViewModel.Detail.TechnicalMessage, Mode=OneWay}"
+                                FontFamily="Consolas"
+                                FontSize="12"
+                                Foreground="{StaticResource AppMutedBrush}"
+                                TextWrapping="WrapWholeWords"
+                                IsTextSelectionEnabled="True" />
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <!-- Status / export footer -->
+        <Grid Grid.Row="4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock
+                Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"
+                Foreground="{StaticResource AppMutedBrush}"
+                FontSize="12"
+                VerticalAlignment="Center" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <TextBlock
+                    Text="{x:Bind ViewModel.ExportMessage, Mode=OneWay}"
+                    Foreground="{StaticResource AppAccentBrush}"
+                    FontSize="12"
+                    VerticalAlignment="Center"
+                    MaxWidth="420"
+                    TextTrimming="CharacterEllipsis"
+                    Visibility="{x:Bind ViewModel.HasExportMessage, Mode=OneWay, Converter={StaticResource BoolToVis}}" />
+                <HyperlinkButton
+                    Content="Ouvrir le dossier d'export"
+                    Command="{x:Bind ViewModel.OpenExportFolderCommand}" />
+                <HyperlinkButton
+                    Content="À propos"
+                    Click="OnAboutClick" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Page>

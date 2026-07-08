@@ -1,66 +1,49 @@
-# Publication Microsoft Store (MSIX) — Checklist
+# Publication Microsoft Store — Checklist (WPF legacy + WinUI)
 
-Ce dépôt contient deux modes de build :
+Ce dépôt contient deux apps et deux modes de distribution :
 
-- **USB (portable)** : fonctionnalités complètes (maintenance/admin), écriture dans le dossier de l'exe.
-- **Store (MSIX)** : maintenance/admin désactivée et stockage Store-friendly.
+- **USB (portable)** : fonctionnalités complètes (maintenance/admin).
+- **Store** : maintenance masquée + chemins AppData/Documents (`STORE_BUILD`).
 
-## 1) Prérequis (machine de build)
+## Produit actif : WinUI 3
 
-- Installer **Visual Studio 2022** avec :
-  - workload **Universal Windows Platform development**
-  - workload **.NET desktop development**
-  - composants **Windows Application Packaging Project** / **MSIX tooling**
-- Installer le **Windows SDK** (>= 10.0.19041).
+- Projet : `EventViewer.WinUI`
+- Build USB : `build_winui_usb.bat` → `bin\WinUI_USB\`
+- Build Store-flagged : `build_winui_store.bat` → `bin\WinUI_Store\`
 
-Note : le projet de packaging (`.wapproj`) se build généralement avec le **MSBuild de Visual Studio** (pas `dotnet msbuild`).
+### Package MSIX (recommandé via Visual Studio)
 
-## 2) Build “Store” (flag `STORE_BUILD`)
+1. Ouvrir `EventViewer.sln`.
+2. Sélectionner `EventViewer.WinUI`.
+3. **Package and Publish** → Create App Packages.
+4. Mettre à jour Identity / Publisher dans `EventViewer.WinUI/Package.appxmanifest`.
+5. Signer et soumettre via Partner Center.
+6. Valider avec le **Windows App Certification Kit (WACK)**.
 
-Le flag Store est injecté via la propriété MSBuild `StoreBuild=true` (voir `EventViewer.csproj`).
+## Legacy WPF packaging
 
-- Build app Store (sans packaging) :
+Le projet `EventViewer.Package` (`.wapproj`) reste disponible pour l’ancienne app WPF :
 
 ```powershell
-dotnet publish -c Release -r win-x64 -p:StoreBuild=true --self-contained true -p:PublishSingleFile=true
+.\build_store_msix.ps1
 ```
 
-Comportements Store :
-- Snapshots : `%LocalAppData%\\EventBeaconTool\\State\\.event_snapshot.json`
-- Exports : `%UserProfile%\\Documents\\EventBeaconTool\\Exports`
-- Menu maintenance / actions admin : masqués ou refusés
+## Comportements Store (`StoreBuild=true`)
 
-## 3) Packaging MSIX (WAP)
+- Snapshots / settings / feedback / télémétrie : `%LocalAppData%\EventBeaconTool\State\`
+- Exports : `%UserProfile%\Documents\EventBeaconTool\Exports`
+- Menu / actions maintenance : masqués
 
-Le projet de packaging est : `EventViewer.Package/EventViewer.Package.wapproj`
+## IA cloud (optionnel)
 
-### Étapes dans Visual Studio
+1. Activer **IA bêta** dans Options.
+2. Renseigner l’endpoint OpenAI-compatible.
+3. Définir la clé via `EVENTVIEWER_AI_API_KEY` (recommandé) ou `AiApiKey` dans les settings.
+4. Sans clé/endpoint valides → fallback local automatique.
 
-1. Ouvrir la solution `EventViewer.sln` (ou ouvrir le dossier et charger le `.wapproj`).
-2. Ouvrir `EventViewer.Package/Package.appxmanifest`.
-3. Mettre à jour l’**Identity** (Name/Publisher) pour matcher votre Partner Center.
-4. Build du packaging project (Release / x64) avec génération de package.
+## Partner Center
 
-## 4) Validation (WACK)
-
-Avant soumission, exécuter le **Windows App Certification Kit (WACK)** sur le MSIX généré.
-
-Objectif :
-- aucun accès interdit (écriture dans Program Files)
-- aucun comportement non autorisé
-
-## 5) Publication via Partner Center
-
-1. Créer l’app dans le **Partner Center**.
-2. Réserver le nom.
-3. Associer l’identité package (Publisher/Identity).
-4. Remplir la page store (description, captures, catégories, politique de confidentialité).
-5. Uploader le package MSIX.
-6. Soumettre et corriger selon les retours.
-
-## Notes importantes
-
-- `autorun.inf` est utile pour la **clé USB**, mais ne concerne pas la version Store.
-- Les fonctions “Maintenance” nécessitant admin doivent rester hors Store (ou dans une variante USB/admin).
-
-
+1. Réserver le nom.
+2. Associer Identity / Publisher.
+3. Remplir métadonnées (voir `PARTNER_CENTER_METADATA.md` et politique de confidentialité).
+4. Uploader le MSIX, soumettre, corriger selon les retours.

@@ -1,5 +1,4 @@
-using EventViewer;
-using System.Windows.Media;
+using EventViewer.Core;
 
 namespace EventViewer.Tests;
 
@@ -23,16 +22,15 @@ public class IncidentTimelineServiceTests
         Assert.True(buckets.Sum(b => b.TotalCount) >= 3);
     }
 
-    private static EventLogItem CreateItem(DateTime date, string level)
+    private static EventItem CreateItem(DateTime date, string level)
     {
-        return new EventLogItem
+        return new EventItem
         {
             TimeCreated = date.ToString("dd/MM/yyyy HH:mm"),
             TimeCreatedAt = date,
             Level = level,
-            LevelColor = Brushes.Red,
-            LevelGlyph = "!",
             Message = "sample",
+            FullMessage = "sample",
             Source = "test",
             EventId = 1
         };

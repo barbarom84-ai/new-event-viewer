@@ -1,179 +1,72 @@
-# ⚡ Observateur d'Événements Windows Moderne
+# Observateur d'événements — lecture simple
 
-Une alternative moderne, élégante et portable à l'Observateur d'événements Windows natif. Interface WPF avec thème sombre professionnel.
+Alternative claire à l'Observateur d'événements Windows. **Application WinUI 3** pensée pour les utilisateurs novices : langage français, actions visibles, détails techniques repliés.
 
-## 🎯 Fonctionnalités
+> La version WPF historique reste dans le dépôt en **legacy gelé**. Le produit actif est `EventViewer.WinUI`.
 
-- ✨ **Interface WPF moderne** avec thème sombre élégant
-- 🔍 **Lecture des 50 derniers événements** (Erreurs et Avertissements)
-- 🎨 **Indicateurs visuels par priorité**
-  - 🔴 Rouge : Erreur
-  - 🟡 Jaune : Avertissement
-  - 🔵 Bleu : Information
-- 💡 **Traduction intelligente des événements** - Plus besoin de Google !
-  - Base de données de 40+ événements Windows courants
-  - Explications en langage clair et français
-  - Solutions recommandées pour chaque problème
-  - Double-clic pour voir les détails complets
-- 💾 **Application portable** (exécutable unique)
-- ⚡ **Optimisé pour une taille minimale** (~15-25 MB)
-- 📊 **Support des journaux** System, Application et Security
-- 🚀 **Chargement asynchrone** pour une interface fluide
-- 📈 **Timeline incidents (24h)** basée sur les vraies dates d'événements
-- 🧠 **Insights de sévérité** (score de risque + top sources)
-- 🧾 **Export JSON** (rapport structuré pour support / analyse)
-- 📡 **Télémétrie locale opt-in** (désactivée par défaut)
-- 🧪 **Mode IA bêta** avec fallback local
-- 🎯 **Virtualisation UI** pour des performances optimales
-- 🔮 **Prêt pour l'enrichissement IA** (fonctionnalité future)
+## Fonctionnalités (v1 + phase 2 WinUI)
 
-## 🚀 Compilation
+- État de santé en tête (« Tout va bien » / « Attention » / « Action recommandée »)
+- Liste d'incidents en langage clair (pas de jargon au premier plan)
+- Panneau **Comprendre** toujours visible : Que faire → En bref → Ce que ça signifie
+- Timeline compacte des 24 dernières heures
+- Recherche simple
+- Journaux : Système / Applications / Sécurité
+- Export CSV et rapport JSON
+- **Snapshots** : enregistrer un point, voir les nouveautés
+- **Maintenance** (hors build Store) : Vider DNS, SFC, Reset réseau
+- **Télémétrie locale opt-in**, feedback utile / pas utile, et **IA bêta**
+- **IA cloud optionnelle** (endpoint OpenAI-compatible + `EVENTVIEWER_AI_API_KEY`, fallback local)
+- Exécution administrateur pour lire les journaux
 
-### Prérequis
-- .NET 8.0 SDK ou supérieur
+## Prérequis
+
 - Windows 10/11
+- .NET 8 SDK
+- Windows App SDK (restauré via NuGet)
 
-### Méthode Simple
+## Lancer en développement
 
-Exécutez simplement le script de compilation :
+```powershell
+dotnet build EventViewer.WinUI\EventViewer.WinUI.csproj -c Release -p:Platform=x64
+dotnet run --project EventViewer.WinUI\EventViewer.WinUI.csproj -c Release -p:Platform=x64 --no-build
+```
+
+Publier USB ou Store-flagged :
 
 ```batch
-build.bat
+build_winui_usb.bat
+build_winui_store.bat
 ```
 
-### Méthode Manuelle
+- USB : `bin\WinUI_USB\EventViewer.WinUI.exe` (admin recommandé)
+- Store-flagged : `bin\WinUI_Store\EventViewer.WinUI.exe` (maintenance masquée)
 
-```batch
-dotnet publish -c Release -r win-x64 ^
-    --self-contained true ^
-    -p:PublishSingleFile=true ^
-    -p:PublishTrimmed=true ^
-    -p:TrimMode=link ^
-    -p:EnableCompressionInSingleFile=true
-```
+Packaging MSIX : voir `STORE_PUBLISHING.md`.
 
-L'exécutable sera disponible dans :  
-`bin\Release\net8.0-windows\win-x64\publish\EventViewer.exe`
+Soumission Store : `PARTNER_CENTER_METADATA.md`, `STORE_SCREENSHOTS.md`, `PRIVACY_POLICY_TEMPLATE.md`, `RELEASE_NOTES.md`.
 
-## 💡 Utilisation
-
-1. **Exécuter en tant qu'administrateur** (requis pour accéder aux journaux Windows)
-2. Sélectionner le journal à consulter (System, Application, Security)
-3. Cliquer sur "🔄 Actualiser" pour charger les derniers événements
-4. **Double-cliquer sur un événement** pour voir l'explication détaillée et les solutions recommandées
-
-### 💡 Comprendre les Événements
-
-Chaque événement affiche maintenant :
-- **Message original** : Le message technique de Windows
-- **💡 Explication claire** : Titre descriptif en langage courant
-- **Description** : Ce que signifie réellement cet événement
-- **Solution recommandée** : Comment résoudre le problème
-
-Plus besoin de chercher sur Google ! L'application contient une base de connaissances de 40+ événements Windows courants.
-
-## 📦 Mode Portable
-
-L'application est conçue pour être complètement portable :
-
-- ✅ **Aucune installation** nécessaire
-- ✅ **Fichier unique** exécutable
-- ✅ **Copie sur clé USB** possible
-- ✅ **Exécution sur n'importe quel PC** Windows
-
-## 🎨 Interface Utilisateur
-
-- **Thème sombre** professionnel inspiré de Visual Studio Code
-- **Icônes de priorité** avec effet de brillance pour identification rapide
-- **Layout responsive** s'adaptant à la taille de la fenêtre
-- **Messages tronqués** intelligemment pour une meilleure lisibilité
-- **Ombres portées** et coins arrondis pour un design moderne
-- **États visuels interactifs** (hover, selection)
-
-## ⚙️ Optimisations Techniques
-
-### Taille de l'Exécutable
-- ✅ PublishTrimmed : Suppression du code inutilisé
-- ✅ TrimMode=link : Trimming agressif
-- ✅ EnableCompressionInSingleFile : Compression intégrée
-- ✅ DebugType=none : Pas de symboles de debug
-- ✅ PublishReadyToRun : Compilation AOT partielle
-
-### Performance
-- ✅ Chargement asynchrone des événements
-- ✅ Cache des SolidColorBrush (frozen)
-- ✅ Virtualisation UI pour la liste
-- ✅ Mode de recyclage pour le ListView
-- ✅ Allocations minimisées (Span, init properties)
-
-## ⚠️ Notes Importantes
-
-- **Privilèges administrateur** requis pour lire les journaux système Windows
-- L'application demande automatiquement l'élévation via le manifest
-- Les journaux Security peuvent nécessiter des permissions spéciales
-- Compatible Windows 10 version 1809 et supérieur
-- La télémétrie est locale et uniquement activée en opt-in (menu Outils)
-
-## ✅ Qualité & CI
-
-- Workflow CI GitHub Actions: build USB + build Store flag + tests unitaires
-- Projet de tests: `EventViewer.Tests`
-
-## 🔧 Structure du Projet
+## Structure
 
 ```
-new-event-viewer/
-├── App.xaml              # Ressources et thème sombre
-├── App.xaml.cs           # Point d'entrée de l'application
-├── MainWindow.xaml       # Interface utilisateur
-├── MainWindow.xaml.cs    # Logique métier
-├── ErrorAnalyzer.cs      # Traduction des IDs d'événements en langage clair
-├── EventViewer.csproj    # Configuration du projet
-├── app.manifest          # Élévation administrateur
-├── build.bat             # Script de compilation
-└── README.md             # Documentation
+EventViewer.Core/     # Logique métier (ErrorAnalyzer, EventLog, insights, export)
+EventViewer.WinUI/    # App WinUI 3 (MVVM, Fluent dark)
+EventViewer.Tests/    # Tests unitaires Core
+EventViewer.csproj    # WPF legacy (gelé)
 ```
 
-## 🧠 Base de Connaissances des Événements
+## Tests & CI
 
-L'application intègre une base de données complète d'événements Windows :
+```powershell
+dotnet test EventViewer.Tests\EventViewer.Tests.csproj -c Release
+```
 
-### Catégories Couvertes
-- 🖥️ **Événements système critiques** (Redémarrages, arrêts inattendus)
-- 💿 **Événements disque** (Erreurs matérielles, espace faible)
-- 🌐 **Événements réseau** (Connexions perdues, DNS)
-- 🔐 **Sécurité et authentification** (Échecs de connexion, audits)
-- 🔄 **Windows Update** (Échecs d'installation)
-- 📱 **Applications** (Plantages, blocages)
-- 🔌 **Pilotes et périphériques** (USB, erreurs de chargement)
-- 💾 **Mémoire et performance** (BSOD, ressources)
-- ⚙️ **Services Windows** (Échecs de démarrage, timeouts)
-- 🛡️ **Windows Defender** (Menaces détectées)
-- 🔒 **BitLocker** (Volumes verrouillés)
-- 🖨️ **Impression** (Erreurs du spouleur)
+CI GitHub Actions : Core + WPF legacy + WinUI (+ flag Store) + tests.
 
-### Enrichissement IA (Futur)
+## Phase suivante
 
-La classe `ErrorAnalyzer` est conçue pour être étendue avec une intégration IA :
-- Méthode `EnrichWithAIAsync()` prête pour OpenAI, Azure OpenAI ou Claude
-- Analyse contextuelle des messages complets
-- Génération de solutions personnalisées
-- Apprentissage continu des nouveaux événements
+Soumission Partner Center réelle (Identity, URL privacy hébergée, captures, MSIX signé).
 
-## 🎯 Cas d'Usage
-
-- 🔍 **Diagnostic système** rapide avec explications intégrées
-- 🛠️ **Support technique** sur site - plus besoin d'Internet pour comprendre les erreurs
-- 📊 **Surveillance événements** critiques avec contexte immédiat
-- 💼 **Administration système** portable avec base de connaissances
-- 🎓 **Formation et démonstration** - apprenez à identifier les problèmes Windows
-- 🚑 **Dépannage d'urgence** - solutions rapides sans recherche Google
-
-## 📝 License
+## License
 
 Projet libre d'utilisation et de modification.
-
----
-
-**Développé avec ❤️ en C# et WPF**
-

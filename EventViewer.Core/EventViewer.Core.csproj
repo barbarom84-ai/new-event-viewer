@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>EventViewer.Core</RootNamespace>
+    <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(StoreBuild)'=='true'">
+    <DefineConstants>$(DefineConstants);STORE_BUILD</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Diagnostics.EventLog" Version="8.0.1" />
+  </ItemGroup>
+
+</Project>
