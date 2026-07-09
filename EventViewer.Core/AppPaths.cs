@@ -4,41 +4,17 @@ using System.IO;
 namespace EventViewer.Core
 {
     /// <summary>
-    /// Chemins d'écriture : toujours vers des emplacements utilisateur accessibles
-    /// (évite les crashs quand le dossier de l'exe est en lecture seule).
+    /// Chemins d'écriture utilisateur (toujours accessibles, USB et Store).
     /// </summary>
     public static class AppPaths
     {
-        private const string AppFolderName = "EventBeaconTool";
+        private const string AppFolderName = "WinBeacon";
 
-        public static string StateDirectory
-        {
-            get
-            {
-                var preferred = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    AppFolderName,
-                    "State");
-
-                // USB legacy: if next-to-exe is writable and already has state, keep using it.
-                try
-                {
-                    var portable = AppDomain.CurrentDomain.BaseDirectory;
-                    if (IsWritableDirectory(portable) &&
-                        (File.Exists(Path.Combine(portable, "appsettings.json")) ||
-                         File.Exists(Path.Combine(portable, ".event_snapshot.json"))))
-                    {
-                        return portable;
-                    }
-                }
-                catch
-                {
-                    // Fall through to AppData.
-                }
-
-                return preferred;
-            }
-        }
+        public static string StateDirectory =>
+            Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                AppFolderName,
+                "State");
 
         public static string SnapshotFilePath => Path.Combine(StateDirectory, ".event_snapshot.json");
 
@@ -83,26 +59,6 @@ namespace EventViewer.Core
             catch (Exception ex)
             {
                 error = ex.Message;
-                return false;
-            }
-        }
-
-        private static bool IsWritableDirectory(string directoryPath)
-        {
-            try
-            {
-                if (string.IsNullOrWhiteSpace(directoryPath) || !Directory.Exists(directoryPath))
-                {
-                    return false;
-                }
-
-                var probe = Path.Combine(directoryPath, $".write_probe_{Guid.NewGuid():N}.tmp");
-                File.WriteAllText(probe, "ok");
-                File.Delete(probe);
-                return true;
-            }
-            catch
-            {
                 return false;
             }
         }

@@ -13,6 +13,7 @@
             <converters:BoolToVisibilityConverter x:Key="BoolToVis" />
             <converters:NullToVisibilityConverter x:Key="NullToVis" />
 
+            <!-- Mutated at runtime by AppThemeService (keep StaticResource bindings). -->
             <SolidColorBrush x:Key="AppBackgroundBrush" Color="#FF111318" />
             <SolidColorBrush x:Key="AppSurfaceBrush" Color="#FF1A1D24" />
             <SolidColorBrush x:Key="AppSurfaceElevatedBrush" Color="#FF22262F" />

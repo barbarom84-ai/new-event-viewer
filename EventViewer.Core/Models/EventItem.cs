@@ -16,6 +16,13 @@ public sealed class EventItem
     public string? ExplanationDescription { get; init; }
     public string? ExplanationSolution { get; init; }
     public string? ExplanationSeverity { get; init; }
+    /// <summary>Readable COM/DCOM component name when resolved (e.g. Windows Update Medic).</summary>
+    public string? RelatedComponentName { get; init; }
+    /// <summary>CLSID/AppID GUID when present in the event.</summary>
+    public string? RelatedComponentGuid { get; init; }
+    /// <summary>Name + GUID on one line for UI.</summary>
+    public string? RelatedComponentDisplay { get; init; }
+    public bool HasRelatedComponent => !string.IsNullOrWhiteSpace(RelatedComponentDisplay);
     public TagInfo? Tag { get; init; }
     public bool HasTag => Tag != null;
     public bool IsNew { get; set; }

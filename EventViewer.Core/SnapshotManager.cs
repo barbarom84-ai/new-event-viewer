@@ -67,8 +67,13 @@ public sealed class SnapshotManager
 
         try
         {
-            var json = File.ReadAllText(_snapshotPath);
-                return JsonSerializer.Deserialize<EventSnapshot>(json, JsonDefaults.Create());
+            var json = SafeFileIO.ReadAllTextLimited(_snapshotPath);
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return null;
+            }
+
+            return JsonSerializer.Deserialize<EventSnapshot>(json, JsonDefaults.Create());
         }
         catch
         {

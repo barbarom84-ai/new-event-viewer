@@ -15,8 +15,8 @@
   <mp:PhoneIdentity PhoneProductId="4d80fb5e-815a-440b-a75e-827b09f91c93" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
-    <DisplayName>Observateur d'événements</DisplayName>
-    <PublisherDisplayName>EventBeacon</PublisherDisplayName>
+    <DisplayName>WinBeacon</DisplayName>
+    <PublisherDisplayName>Marco Barbaro</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
@@ -26,7 +26,9 @@
   </Dependencies>
 
   <Resources>
-    <Resource Language="x-generate"/>
+    <Resource Language="fr-FR"/>
+    <Resource Language="en-US"/>
+    <Resource Language="it-IT"/>
   </Resources>
 
   <Applications>
@@ -34,7 +36,7 @@
       Executable="$targetnametoken$.exe"
       EntryPoint="$targetentrypoint$">
       <uap:VisualElements
-        DisplayName="Observateur d'événements"
+        DisplayName="WinBeacon"
         Description="Comprenez les erreurs Windows en langage clair"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"

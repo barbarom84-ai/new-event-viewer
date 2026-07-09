@@ -5,10 +5,28 @@ namespace EventViewer.Core;
 
 /// <summary>
 /// System maintenance commands (USB / elevated builds only).
+/// All process starts go through a fixed allowlist — no user-controlled command lines.
 /// </summary>
 public sealed class SystemMaintenanceHelper
 {
-    public static async Task<CommandResult> ExecuteCommandAsync(string command, string arguments)
+    private static readonly HashSet<string> AllowedSettingsUris = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "ms-settings:network",
+        "ms-settings:network-status",
+        "ms-settings:network-wifi",
+        "ms-settings:storage",
+        "ms-settings:storagesense",
+        "ms-settings:windowsupdate",
+        "windowsdefender://threat"
+    };
+
+    private static Task<CommandResult> ExecuteAllowlistedAsync(string fileName, string arguments)
+    {
+        // Only known Windows binaries with fixed arguments — never interpolate event text here.
+        return ExecuteCommandAsync(fileName, arguments);
+    }
+
+    private static async Task<CommandResult> ExecuteCommandAsync(string command, string arguments, bool showConsole = false)
     {
         try
         {
@@ -16,38 +34,49 @@ public sealed class SystemMaintenanceHelper
             {
                 FileName = command,
                 Arguments = arguments,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
                 UseShellExecute = false,
-                CreateNoWindow = true,
-                StandardOutputEncoding = Encoding.UTF8,
-                StandardErrorEncoding = Encoding.UTF8
+                CreateNoWindow = !showConsole
             };
+
+            if (!showConsole)
+            {
+                processInfo.RedirectStandardOutput = true;
+                processInfo.RedirectStandardError = true;
+                processInfo.StandardOutputEncoding = Encoding.UTF8;
+                processInfo.StandardErrorEncoding = Encoding.UTF8;
+            }
 
             var output = new StringBuilder();
             var error = new StringBuilder();
 
             using var process = new Process { StartInfo = processInfo };
 
-            process.OutputDataReceived += (_, e) =>
+            if (!showConsole)
             {
-                if (!string.IsNullOrEmpty(e.Data))
+                process.OutputDataReceived += (_, e) =>
                 {
-                    output.AppendLine(e.Data);
-                }
-            };
+                    if (!string.IsNullOrEmpty(e.Data))
+                    {
+                        output.AppendLine(e.Data);
+                    }
+                };
 
-            process.ErrorDataReceived += (_, e) =>
-            {
-                if (!string.IsNullOrEmpty(e.Data))
+                process.ErrorDataReceived += (_, e) =>
                 {
-                    error.AppendLine(e.Data);
-                }
-            };
+                    if (!string.IsNullOrEmpty(e.Data))
+                    {
+                        error.AppendLine(e.Data);
+                    }
+                };
+            }
 
             process.Start();
-            process.BeginOutputReadLine();
-            process.BeginErrorReadLine();
+            if (!showConsole)
+            {
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+            }
+
             await process.WaitForExitAsync();
 
             return new CommandResult
@@ -65,19 +94,133 @@ public sealed class SystemMaintenanceHelper
                 Success = false,
                 ExitCode = -1,
                 Output = string.Empty,
-                Error = $"Exception lors de l'exécution: {ex.Message}"
+                Error = Loc.T("Command.Exception", ex.Message)
             };
         }
     }
 
-    public static Task<CommandResult> RunSystemFileCheckerAsync()
-        => ExecuteCommandAsync("cmd.exe", "/c sfc /scannow");
+    /// <summary>
+    /// Runs SFC in a branded visible console so the user can follow progress (10–30 min).
+    /// </summary>
+    public static async Task<CommandResult> RunSystemFileCheckerAsync()
+    {
+        try
+        {
+            var appTitle = SanitizeConsoleTitle(Loc.T("App.Title"));
+            var windowTitle = $"{appTitle} — SFC /scannow";
+            // color 0A = black background + light green (matches dark/forest accent).
+            var args =
+                "/c color 0A & " +
+                $"title {windowTitle} & " +
+                "cls & " +
+                $"echo  {appTitle} & " +
+                "echo  -------------------------------- & " +
+                "echo  SFC /scannow & " +
+                "echo. & " +
+                "sfc /scannow";
+
+            using var process = Process.Start(new ProcessStartInfo
+            {
+                FileName = "cmd.exe",
+                Arguments = args,
+                UseShellExecute = true,
+                CreateNoWindow = false,
+                WindowStyle = ProcessWindowStyle.Normal
+            });
+
+            if (process == null)
+            {
+                return new CommandResult
+                {
+                    Success = false,
+                    ExitCode = -1,
+                    Error = Loc.T("Command.OpenFailed", "sfc /scannow")
+                };
+            }
+
+            await process.WaitForExitAsync();
+            return new CommandResult
+            {
+                Success = process.ExitCode == 0,
+                ExitCode = process.ExitCode,
+                Output = string.Empty,
+                Error = process.ExitCode == 0
+                    ? string.Empty
+                    : Loc.T("Command.FailedWithCode", "SFC", process.ExitCode)
+            };
+        }
+        catch (Exception ex)
+        {
+            return new CommandResult
+            {
+                Success = false,
+                ExitCode = -1,
+                Error = Loc.T("Command.Exception", ex.Message)
+            };
+        }
+    }
+
+    private static string SanitizeConsoleTitle(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "WinBeacon";
+        }
+
+        // Strip characters that break cmd.exe "title" / echo parsing.
+        var cleaned = value
+            .Replace("&", " ")
+            .Replace("|", " ")
+            .Replace(">", " ")
+            .Replace("<", " ")
+            .Replace("^", " ")
+            .Replace("\"", "'")
+            .Trim();
+
+        return string.IsNullOrWhiteSpace(cleaned) ? "WinBeacon" : cleaned;
+    }
 
     public static Task<CommandResult> FlushDnsAsync()
-        => ExecuteCommandAsync("ipconfig", "/flushdns");
+        => ExecuteAllowlistedAsync("ipconfig", "/flushdns");
 
     public static Task<CommandResult> OpenDiskCleanupAsync()
-        => ExecuteCommandAsync("cleanmgr.exe", string.Empty);
+        => OpenGuiToolAsync("cleanmgr.exe", string.Empty);
+
+    public static Task<CommandResult> OpenReliabilityHistoryAsync()
+        => OpenGuiToolAsync("perfmon.exe", "/rel");
+
+    public static Task<CommandResult> OpenDeviceManagerAsync()
+        => OpenGuiToolAsync("mmc.exe", "devmgmt.msc");
+
+    private static Task<CommandResult> OpenGuiToolAsync(string fileName, string arguments)
+    {
+        try
+        {
+            var started = Process.Start(new ProcessStartInfo
+            {
+                FileName = fileName,
+                Arguments = arguments,
+                UseShellExecute = true
+            });
+
+            return Task.FromResult(new CommandResult
+            {
+                Success = started != null,
+                ExitCode = started != null ? 0 : -1,
+                Output = started != null ? Loc.T("Command.Opening", fileName) : string.Empty,
+                Error = started == null ? Loc.T("Command.OpenFailed", fileName) : string.Empty
+            });
+        }
+        catch (Exception ex)
+        {
+            return Task.FromResult(new CommandResult
+            {
+                Success = false,
+                ExitCode = -1,
+                Error = Loc.T("Command.Exception", ex.Message)
+            });
+        }
+    }
 
     public static Task<CommandResult> RunDefenderQuickScanAsync()
     {
@@ -96,11 +239,21 @@ public sealed class SystemMaintenanceHelper
 
     public static Task<CommandResult> OpenUriAsync(string uri)
     {
+        if (string.IsNullOrWhiteSpace(uri) || !AllowedSettingsUris.Contains(uri.Trim()))
+        {
+            return Task.FromResult(new CommandResult
+            {
+                Success = false,
+                ExitCode = -1,
+                Error = Loc.T("Command.UriNotAllowed")
+            });
+        }
+
         try
         {
             var started = Process.Start(new ProcessStartInfo
             {
-                FileName = uri,
+                FileName = uri.Trim(),
                 UseShellExecute = true
             });
 
@@ -108,8 +261,8 @@ public sealed class SystemMaintenanceHelper
             {
                 Success = started != null,
                 ExitCode = started != null ? 0 : -1,
-                Output = started != null ? $"Ouverture : {uri}" : string.Empty,
-                Error = started == null ? $"Impossible d'ouvrir {uri}" : string.Empty
+                Output = started != null ? Loc.T("Command.Opening", uri) : string.Empty,
+                Error = started == null ? Loc.T("Command.OpenFailed", uri) : string.Empty
             });
         }
         catch (Exception ex)
@@ -125,13 +278,13 @@ public sealed class SystemMaintenanceHelper
 
     public static async Task<CommandResult> ResetNetworkAsync()
     {
-        var winsock = await ExecuteCommandAsync("netsh", "winsock reset");
+        var winsock = await ExecuteAllowlistedAsync("netsh", "winsock reset");
         if (!winsock.Success)
         {
             return winsock;
         }
 
-        var tcp = await ExecuteCommandAsync("netsh", "int ip reset");
+        var tcp = await ExecuteAllowlistedAsync("netsh", "int ip reset");
         return new CommandResult
         {
             Success = tcp.Success,
@@ -154,14 +307,14 @@ public sealed class CommandResult
         var result = new StringBuilder();
         if (!string.IsNullOrWhiteSpace(Output))
         {
-            result.AppendLine("=== SORTIE ===");
+            result.AppendLine(Loc.T("Command.OutputHeader"));
             result.AppendLine(Output);
         }
 
         if (!string.IsNullOrWhiteSpace(Error))
         {
             result.AppendLine();
-            result.AppendLine("=== ERREURS ===");
+            result.AppendLine(Loc.T("Command.ErrorHeader"));
             result.AppendLine(Error);
         }
 
@@ -172,7 +325,7 @@ public sealed class CommandResult
     {
         if (Success)
         {
-            return $"{actionLabel} terminé avec succès.";
+            return Loc.T("Command.Success", actionLabel);
         }
 
         var detail = string.IsNullOrWhiteSpace(Error) ? Output : Error;
@@ -183,7 +336,7 @@ public sealed class CommandResult
         }
 
         return string.IsNullOrWhiteSpace(detail)
-            ? $"{actionLabel} a échoué (code {ExitCode})."
-            : $"{actionLabel} a échoué : {detail}";
+            ? Loc.T("Command.FailedWithCode", actionLabel, ExitCode)
+            : Loc.T("Action.Failed", actionLabel, detail);
     }
 }

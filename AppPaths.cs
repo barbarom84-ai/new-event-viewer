@@ -8,7 +8,7 @@ namespace EventViewer
     /// </summary>
     public static class AppPaths
     {
-        private const string AppFolderName = "EventBeaconTool";
+        private const string AppFolderName = "WinBeacon";
 
         public static string StateDirectory
         {

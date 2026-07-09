@@ -10,8 +10,8 @@ public sealed class InsightsService
     public ProductInsights Build(IEnumerable<EventItem> events)
     {
         var source = events?.ToList() ?? [];
-        var critical = source.Count(e => string.Equals(e.Level, "Erreur", StringComparison.OrdinalIgnoreCase));
-        var warnings = source.Count(e => string.Equals(e.Level, "Avertissement", StringComparison.OrdinalIgnoreCase));
+        var critical = source.Count(e => EventSeverity.IsError(e.Level));
+        var warnings = source.Count(e => EventSeverity.IsWarning(e.Level));
         var tagged = source.Count(e => e.HasTag);
 
         var topSources = source
@@ -24,10 +24,10 @@ public sealed class InsightsService
         var score = Math.Clamp((critical * 3) + (warnings * 1) + (tagged / 2), 0, 100);
         var severity = score switch
         {
-            >= 70 => "Critique",
-            >= 40 => "Elevée",
-            >= 20 => "Modérée",
-            _ => "Faible"
+            >= 70 => Loc.T("Risk.Critical"),
+            >= 40 => Loc.T("Risk.High"),
+            >= 20 => Loc.T("Risk.Medium"),
+            _ => Loc.T("Risk.Low")
         };
 
         return new ProductInsights
@@ -66,25 +66,33 @@ public static class HealthCopy
 {
     public static string FromScore(int score) => score switch
     {
-        >= 70 => "Action recommandée",
-        >= 40 => "Attention",
-        >= 20 => "Quelques points à vérifier",
-        _ => "Tout va bien"
+        >= 70 => Loc.T("Health.Action"),
+        >= 40 => Loc.T("Health.Attention"),
+        >= 20 => Loc.T("Health.Watch"),
+        _ => Loc.T("Health.Ok")
     };
 
-    public static string NoviceSeverity(string level) => level switch
+    public static string NoviceSeverity(string level)
     {
-        "Erreur" => "Critique",
-        "Avertissement" => "À surveiller",
-        _ => "Info"
-    };
+        if (EventSeverity.IsError(level))
+        {
+            return Loc.T("Severity.Critical");
+        }
+
+        if (EventSeverity.IsWarning(level))
+        {
+            return Loc.T("Severity.Watch");
+        }
+
+        return Loc.T("Severity.Info");
+    }
 }
 
 public sealed class ProductInsights
 {
     public int RiskScore { get; init; }
     public required string SeverityLabel { get; init; }
-    public string HealthHeadline { get; init; } = "Tout va bien";
+    public string HealthHeadline { get; init; } = Loc.T("Health.Ok");
     public int CriticalCount { get; init; }
     public int WarningCount { get; init; }
     public int TaggedCount { get; init; }

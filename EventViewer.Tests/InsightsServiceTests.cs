@@ -4,14 +4,20 @@ namespace EventViewer.Tests;
 
 public class InsightsServiceTests
 {
+    public InsightsServiceTests()
+    {
+        Loc.Initialize(AppLanguage.French);
+    }
+
     [Fact]
     public void Build_ComputesRiskScoreAndSeverity()
     {
+        Loc.Apply(AppLanguage.French);
         var events = new List<EventItem>
         {
-            CreateItem("Erreur", "Disk"),
-            CreateItem("Erreur", "Disk"),
-            CreateItem("Avertissement", "Tcpip")
+            CreateItem(EventSeverity.Error, "Disk"),
+            CreateItem(EventSeverity.Error, "Disk"),
+            CreateItem(EventSeverity.Warning, "Tcpip")
         };
 
         var service = new InsightsService();
@@ -26,9 +32,10 @@ public class InsightsServiceTests
     [Fact]
     public void HealthCopy_NoviceSeverity_MapsForNovices()
     {
-        Assert.Equal("Critique", HealthCopy.NoviceSeverity("Erreur"));
-        Assert.Equal("À surveiller", HealthCopy.NoviceSeverity("Avertissement"));
-        Assert.Equal("Info", HealthCopy.NoviceSeverity("Information"));
+        Loc.Apply(AppLanguage.French);
+        Assert.Equal("Critique", HealthCopy.NoviceSeverity(EventSeverity.Error));
+        Assert.Equal("À surveiller", HealthCopy.NoviceSeverity(EventSeverity.Warning));
+        Assert.Equal("Info", HealthCopy.NoviceSeverity(EventSeverity.Information));
     }
 
     private static EventItem CreateItem(string level, string source)
@@ -44,7 +51,8 @@ public class InsightsServiceTests
             EventId = 1000,
             Tag = new TagInfo
             {
-                Name = "RÉSEAU",
+                Key = "Network",
+                Name = Loc.T("Tag.Network"),
                 Keywords = ["dns"],
                 ColorHex = "#FF2196F3",
                 Advice = "advice"

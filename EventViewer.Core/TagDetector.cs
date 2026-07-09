@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace EventViewer.Core;
 
 /// <summary>
@@ -5,59 +7,72 @@ namespace EventViewer.Core;
 /// </summary>
 public sealed class TagDetector
 {
-    private static readonly Dictionary<string, TagInfo> TagCategories = new()
-    {
-        ["MATÉRIEL"] = new TagInfo
-        {
-            Name = "MATÉRIEL",
-            Keywords = ["disk", "bad block", "ntfs", "hardware", "drive", "ssd", "hdd", "sata", "storage", "volume", "partition"],
-            ColorHex = "#FFF44336",
-            Advice = "Problème matériel possible. Vérifiez l'état du disque, sauvegardez vos données importantes, puis exécutez une vérification du disque si besoin."
-        },
-        ["RÉSEAU"] = new TagInfo
-        {
-            Name = "RÉSEAU",
-            Keywords = ["network", "dns", "tcp", "ip", "ethernet", "wifi", "connection", "internet", "lan", "wan", "dhcp", "router"],
-            ColorHex = "#FF2196F3",
-            Advice = "Problème réseau possible. Vérifiez votre connexion, redémarrez la box si besoin, puis testez un autre serveur DNS."
-        },
-        ["MÉMOIRE"] = new TagInfo
-        {
-            Name = "MÉMOIRE",
-            Keywords = ["memory", "ram", "page file", "paging", "swap", "virtual memory", "out of memory", "oom"],
-            ColorHex = "#FF9C27B0",
-            Advice = "Problème de mémoire possible. Fermez les applications inutilisées et redémarrez l'ordinateur si nécessaire."
-        },
-        ["SERVICE"] = new TagInfo
-        {
-            Name = "SERVICE",
-            Keywords = ["service", "svchost", "daemon", "timeout", "failed to start", "stopped unexpectedly"],
-            ColorHex = "#FFFF9800",
-            Advice = "Un service Windows a rencontré un problème. Un redémarrage peut aider ; sinon consultez les détails de l'événement."
-        },
-        ["SÉCURITÉ"] = new TagInfo
-        {
-            Name = "SÉCURITÉ",
-            Keywords = ["security", "virus", "malware", "threat", "firewall", "authentication", "login", "credential", "unauthorized"],
-            ColorHex = "#FFFFC107",
-            Advice = "Alerte liée à la sécurité. Lancez une analyse Windows Defender et vérifiez les connexions récentes si besoin."
-        }
-    };
+    private static readonly (string Key, string[] Keywords, string ColorHex)[] Categories =
+    [
+        ("Hardware", ["disk", "bad block", "ntfs", "hardware", "drive", "ssd", "hdd", "sata", "storage", "volume", "partition"], "#FFF44336"),
+        ("Network", ["network", "dns", "tcp", "ethernet", "wifi", "wi-fi", "internet", "dhcp", "router", "connexion", "connection"], "#FF2196F3"),
+        ("Memory", ["memory", "ram", "page file", "paging", "swap", "virtual memory", "out of memory", "oom"], "#FF9C27B0"),
+        ("Service", ["service", "svchost", "daemon", "timeout", "failed to start", "stopped unexpectedly"], "#FFFF9800"),
+        ("Security", ["security", "virus", "malware", "threat", "firewall", "authentication", "login", "credential", "unauthorized"], "#FFFFC107")
+    ];
 
     public TagInfo? DetectTag(string message, string source)
     {
+        if (IsDcom(source, message))
+        {
+            return null;
+        }
+
         var textToAnalyze = $"{message} {source}".ToLowerInvariant();
 
-        foreach (var category in TagCategories.Values)
+        foreach (var (key, keywords, color) in Categories)
         {
-            if (category.Keywords.Any(keyword => textToAnalyze.Contains(keyword)))
+            if (keywords.Any(keyword => ContainsKeyword(textToAnalyze, keyword)))
             {
-                return category;
+                return new TagInfo
+                {
+                    Key = key,
+                    Name = Loc.T($"Tag.{key}"),
+                    Keywords = keywords,
+                    ColorHex = color,
+                    Advice = Loc.T($"Tag.{key}.Advice")
+                };
             }
         }
 
         return null;
     }
 
-    public IEnumerable<TagInfo> GetAllTags() => TagCategories.Values;
+    public IEnumerable<TagInfo> GetAllTags()
+        => Categories.Select(c => new TagInfo
+        {
+            Key = c.Key,
+            Name = Loc.T($"Tag.{c.Key}"),
+            Keywords = c.Keywords,
+            ColorHex = c.ColorHex,
+            Advice = Loc.T($"Tag.{c.Key}.Advice")
+        });
+
+    public static bool IsDcom(string? source, string? message)
+    {
+        var blob = $"{source} {message}".ToLowerInvariant();
+        return blob.Contains("dcom", StringComparison.Ordinal)
+               || blob.Contains("distributedcom", StringComparison.Ordinal)
+               || blob.Contains("distributed com", StringComparison.Ordinal);
+    }
+
+    private static bool ContainsKeyword(string text, string keyword)
+    {
+        if (string.IsNullOrEmpty(keyword))
+        {
+            return false;
+        }
+
+        if (keyword.Length <= 3)
+        {
+            return Regex.IsMatch(text, $@"\b{Regex.Escape(keyword)}\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        }
+
+        return text.Contains(keyword, StringComparison.OrdinalIgnoreCase);
+    }
 }

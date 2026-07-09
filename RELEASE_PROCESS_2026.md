@@ -18,17 +18,22 @@ Cycle de release mensuel (stable + preview) pour **EventViewer.WinUI**.
 5. Publish smoke :
    - `build_winui_usb.bat`
    - `build_winui_store.bat`
-6. Tests manuels :
+6. Signature USB (release publique) :
+   - `.\build_winui_usb.ps1 -Sign` avec PFX / thumbprint de production
+   - vérifier `Get-AuthenticodeSignature` → `Valid`
+   - suivre `STORE_SECURITY_CHECKLIST.md`
+7. Tests manuels :
    - chargement Système / Applications / Sécurité
    - export CSV + JSON
    - snapshot + nouveautés
    - timeline + bandeau santé
    - feedback Utile / Pas utile
    - télémétrie ON/OFF
-   - IA locale ; cloud uniquement si clé de test
-   - maintenance visible en USB, masquée en Store
-7. WPF legacy (optionnel) : build `EventViewer.csproj` tant qu’il reste dans la solution
-8. Avant Store : Identity Partner Center, captures (`STORE_SCREENSHOTS.md`), URL privacy, WACK
+   - IA locale ; cloud uniquement si clé de test + consentement + HTTPS
+   - maintenance visible en USB (avec confirmations), masquée en Store
+   - auto-fix DCOM ≠ correction DNS
+8. WPF legacy (optionnel) : build `EventViewer.csproj` tant qu’il reste dans la solution
+9. Avant Store : Identity Partner Center, captures (`STORE_SCREENSHOTS.md`), URL privacy, WACK, checklist sécurité
 
 ## Notes de version
 

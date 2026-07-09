@@ -2,13 +2,20 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EventViewer.Core;
+using EventViewer.WinUI.Themes;
 
 namespace EventViewer.WinUI.ViewModels;
 
 public sealed class LogOption
 {
-    public required string DisplayName { get; init; }
+    public required string DisplayName { get; set; }
     public required string LogName { get; init; }
+}
+
+public sealed class LanguageOption
+{
+    public required string Code { get; init; }
+    public required string DisplayName { get; set; }
 }
 
 public partial class MainViewModel : ObservableObject
@@ -26,6 +33,10 @@ public partial class MainViewModel : ObservableObject
     private bool _comparisonMode;
     private bool _isHydratingSettings;
     private HashSet<string> _newEventKeys = [];
+    private readonly Microsoft.UI.Dispatching.DispatcherQueueTimer _filterDebounceTimer;
+    private string? _lastMaintenanceActionKey;
+    private CommandResult? _lastMaintenanceResult;
+    private int _lastLoadedCount;
 
     public MainViewModel(
         IEventLogService eventLogService,
@@ -44,6 +55,7 @@ public partial class MainViewModel : ObservableObject
         _aiAssistantService = aiAssistantService;
         _autoFixService = autoFixService;
         _settings = AppSettingsStore.Load();
+        Loc.Initialize(_settings.UiLanguage);
         TelemetryService.Configure(_settings.TelemetryOptIn);
 
         Detail = new EventDetailViewModel();
@@ -51,30 +63,61 @@ public partial class MainViewModel : ObservableObject
         IsStoreBuild = DetectStoreBuild();
         ShowMaintenance = !IsStoreBuild;
 
+        var queue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+        _filterDebounceTimer = queue.CreateTimer();
+        _filterDebounceTimer.Interval = TimeSpan.FromMilliseconds(220);
+        _filterDebounceTimer.IsRepeating = false;
+        _filterDebounceTimer.Tick += (_, _) => ApplyFilter();
+
+        LanguageOptions =
+        [
+            new LanguageOption { Code = AppLanguage.System, DisplayName = AppLanguage.DisplayName(AppLanguage.System) },
+            new LanguageOption { Code = AppLanguage.French, DisplayName = "Français" },
+            new LanguageOption { Code = AppLanguage.English, DisplayName = "English" },
+            new LanguageOption { Code = AppLanguage.Italian, DisplayName = "Italiano" }
+        ];
+        ThemeOptions = AppThemeService.CreateOptions().ToList();
+
         _isHydratingSettings = true;
         TelemetryOptIn = _settings.TelemetryOptIn;
         AiBetaEnabled = _settings.AiBetaEnabled;
+        AiCloudDataConsent = _settings.AiCloudDataConsent;
         AiEndpoint = _settings.AiApiEndpoint ?? string.Empty;
         AiModel = string.IsNullOrWhiteSpace(_settings.AiModel) ? "gpt-4o-mini" : _settings.AiModel;
+        SelectedLanguage = LanguageOptions.FirstOrDefault(l => l.Code == AppLanguage.Normalize(_settings.UiLanguage))
+                           ?? LanguageOptions[0];
+        SelectedTheme = ThemeOptions.FirstOrDefault(t => t.Id == AppThemeService.Normalize(_settings.UiTheme))
+                        ?? ThemeOptions[0];
         _isHydratingSettings = false;
 
+        RefreshLogOptions();
         _selectedLog = LogOptions[0];
+        ApplyLocalizedChrome();
+        // Theme is applied from App.OnLaunched once Application.Resources is ready.
         RefreshSnapshotStatus();
         RefreshToolsStatus();
-        TelemetryService.Track("app_start", new Dictionary<string, string> { ["storeBuild"] = IsStoreBuild ? "true" : "false" });
+        TelemetryService.Track("app_start", new Dictionary<string, string>
+        {
+            ["storeBuild"] = IsStoreBuild ? "true" : "false",
+            ["lang"] = Loc.EffectiveLanguage,
+            ["theme"] = AppThemeService.Normalize(_settings.UiTheme)
+        });
     }
 
     public EventDetailViewModel Detail { get; }
+    public UiStrings Strings => UiStrings.Instance;
 
     public ObservableCollection<IncidentCardViewModel> Incidents { get; } = [];
     public ObservableCollection<IncidentBucket> TimelineBuckets { get; } = [];
+    public ObservableCollection<LogOption> LogOptions { get; } = [];
+    public IReadOnlyList<LanguageOption> LanguageOptions { get; }
+    public IReadOnlyList<ThemeOption> ThemeOptions { get; }
 
-    public IReadOnlyList<LogOption> LogOptions { get; } =
-    [
-        new LogOption { DisplayName = "Système", LogName = "System" },
-        new LogOption { DisplayName = "Applications", LogName = "Application" },
-        new LogOption { DisplayName = "Sécurité", LogName = "Security" }
-    ];
+    [ObservableProperty]
+    private LanguageOption? _selectedLanguage;
+
+    [ObservableProperty]
+    private ThemeOption? _selectedTheme;
 
     [ObservableProperty]
     private LogOption? _selectedLog;
@@ -113,13 +156,13 @@ public partial class MainViewModel : ObservableObject
     private bool _showMaintenance;
 
     [ObservableProperty]
-    private string _statusMessage = "Prêt";
+    private string _statusMessage = Loc.T("Status.Ready");
 
     [ObservableProperty]
-    private string _healthHeadline = "Analyse en cours…";
+    private string _healthHeadline = Loc.T("Status.Loading");
 
     [ObservableProperty]
-    private string _healthSubtitle = "Lecture des journaux Windows";
+    private string _healthSubtitle = Loc.T("Status.Loading");
 
     [ObservableProperty]
     private int _errorCount;
@@ -140,13 +183,13 @@ public partial class MainViewModel : ObservableObject
     private bool _isEmpty;
 
     [ObservableProperty]
-    private string _emptyTitle = "Aucun incident récent";
+    private string _emptyTitle = Loc.T("Empty.NoIncidents.Title");
 
     [ObservableProperty]
-    private string _emptyMessage = "C'est une bonne nouvelle : aucune erreur ni avertissement dans ce journal.";
+    private string _emptyMessage = Loc.T("Empty.NoIncidents.Message");
 
     [ObservableProperty]
-    private string _snapshotStatus = "Aucun point de comparaison";
+    private string _snapshotStatus = Loc.T("Snapshot.None");
 
     [ObservableProperty]
     private bool _hasSnapshot;
@@ -164,10 +207,13 @@ public partial class MainViewModel : ObservableObject
     private bool _aiBetaEnabled;
 
     [ObservableProperty]
+    private bool _aiCloudDataConsent;
+
+    [ObservableProperty]
     private string _toolsStatus = string.Empty;
 
     [ObservableProperty]
-    private string _aiCloudStatus = "Cloud IA : non configuré";
+    private string _aiCloudStatus = Loc.T("Cloud.Status.NotConfigured");
 
     [ObservableProperty]
     private string _aiEndpoint = string.Empty;
@@ -181,7 +227,11 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private bool _hasMaintenanceMessage;
 
-    partial void OnSearchTextChanged(string value) => ApplyFilter();
+    partial void OnSearchTextChanged(string value)
+    {
+        _filterDebounceTimer.Stop();
+        _filterDebounceTimer.Start();
+    }
 
     partial void OnSelectedLogChanged(LogOption? value)
     {
@@ -210,36 +260,23 @@ public partial class MainViewModel : ObservableObject
     private AutoFixRecommendation ResolveAutoFix(EventItem item)
         => _autoFixService.Recommend(item, IsStoreBuild);
 
-    [RelayCommand]
-    private async Task RunSuggestedFixAsync()
-    {
-        var recommendation = Detail.CurrentAutoFix;
-        if (recommendation == null || !recommendation.CanExecuteAutomatically || recommendation.Kind == AutoFixKind.None)
-        {
-            StatusMessage = "Aucune correction automatique pour cet incident.";
-            return;
-        }
-
-        if (recommendation.RequiresAdmin && !IsAdmin)
-        {
-            var msg = "Cette correction nécessite les droits administrateur. Relancez l'application en admin.";
-            Detail.SetAutoFixResult(msg);
-            StatusMessage = msg;
-            return;
-        }
-
-        // Confirmation is handled by the view (ContentDialog) before calling ExecuteConfirmedAutoFixAsync.
-        await ExecuteConfirmedAutoFixAsync(recommendation);
-    }
+    // Confirmation gate is in MainPage (ContentDialog) → ExecuteConfirmedAutoFixAsync.
 
     public async Task ExecuteConfirmedAutoFixAsync(AutoFixRecommendation recommendation)
     {
         IsBusyMaintenance = true;
         var progress = recommendation.IsLongRunning
-            ? $"{recommendation.Title} en cours… Cela peut prendre plusieurs minutes."
-            : $"{recommendation.Title} en cours…";
+            ? Loc.T("Action.InProgressLong", recommendation.Title)
+            : Loc.T("Action.InProgress", recommendation.Title);
+        if (recommendation.Kind is AutoFixKind.RunSfc)
+        {
+            progress = Loc.T("Action.InProgressLong", recommendation.Title) + "\n" + Loc.T("Action.SfcConsoleHint");
+        }
+
         Detail.SetAutoFixResult(progress);
         StatusMessage = progress;
+        MaintenanceMessage = progress;
+        HasMaintenanceMessage = true;
 
         try
         {
@@ -247,7 +284,7 @@ public partial class MainViewModel : ObservableObject
             var summary = result.GetUserSummary(recommendation.Title);
             if (recommendation.Kind is AutoFixKind.ResetNetwork && result.Success)
             {
-                summary += " Un redémarrage peut être nécessaire.";
+                summary += Loc.T("Action.RebootMayBeRequired");
             }
 
             Detail.SetAutoFixResult(summary);
@@ -263,9 +300,11 @@ public partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            var msg = $"{recommendation.Title} a échoué : {ex.Message}";
+            var msg = Loc.T("Action.Failed", recommendation.Title, ex.Message);
             Detail.SetAutoFixResult(msg);
             StatusMessage = msg;
+            MaintenanceMessage = msg;
+            HasMaintenanceMessage = true;
             TelemetryService.TrackException("auto_fix_failed", ex);
         }
         finally
@@ -290,7 +329,7 @@ public partial class MainViewModel : ObservableObject
         TelemetryService.Configure(value);
         RefreshToolsStatus();
         TelemetryService.Track("telemetry_toggled", new Dictionary<string, string> { ["enabled"] = value ? "true" : "false" });
-        StatusMessage = value ? "Télémétrie locale activée" : "Télémétrie locale désactivée";
+        StatusMessage = value ? Loc.T("Status.TelemetryOn") : Loc.T("Status.TelemetryOff");
     }
 
     partial void OnAiBetaEnabledChanged(bool value)
@@ -301,6 +340,12 @@ public partial class MainViewModel : ObservableObject
         }
 
         _settings.AiBetaEnabled = value;
+        if (!value)
+        {
+            AiCloudDataConsent = false;
+            _settings.AiCloudDataConsent = false;
+        }
+
         if (!PersistSettings())
         {
             return;
@@ -308,7 +353,30 @@ public partial class MainViewModel : ObservableObject
 
         RefreshToolsStatus();
         TelemetryService.Track("ai_beta_toggled", new Dictionary<string, string> { ["enabled"] = value ? "true" : "false" });
-        StatusMessage = value ? "IA bêta activée" : "IA bêta désactivée";
+        StatusMessage = value ? Loc.T("Status.AiBetaOn") : Loc.T("Status.AiBetaOff");
+    }
+
+    partial void OnAiCloudDataConsentChanged(bool value)
+    {
+        if (_isHydratingSettings)
+        {
+            return;
+        }
+
+        _settings.AiCloudDataConsent = value;
+        if (!PersistSettings())
+        {
+            return;
+        }
+
+        RefreshToolsStatus();
+        TelemetryService.Track("ai_cloud_consent_toggled", new Dictionary<string, string>
+        {
+            ["enabled"] = value ? "true" : "false"
+        });
+        StatusMessage = value
+            ? Loc.T("Status.CloudConsentOn")
+            : Loc.T("Status.CloudConsentOff");
     }
 
     partial void OnAiEndpointChanged(string value)
@@ -318,7 +386,16 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
-        _settings.AiApiEndpoint = value?.Trim() ?? string.Empty;
+        var trimmed = value?.Trim() ?? string.Empty;
+        if (!string.IsNullOrEmpty(trimmed) && !AiEndpointPolicy.IsAllowed(trimmed))
+        {
+            AiEndpointPolicy.TryValidate(trimmed, out _, out var error);
+            StatusMessage = Loc.T("Status.AiEndpointRejected", error);
+            RefreshToolsStatus();
+            // Still persist so the user sees the value, but cloud calls will refuse it.
+        }
+
+        _settings.AiApiEndpoint = trimmed;
         PersistSettings();
         RefreshToolsStatus();
     }
@@ -335,11 +412,100 @@ public partial class MainViewModel : ObservableObject
         RefreshToolsStatus();
     }
 
+    partial void OnSelectedLanguageChanged(LanguageOption? value)
+    {
+        if (_isHydratingSettings || value == null)
+        {
+            return;
+        }
+
+        _settings.UiLanguage = value.Code;
+        if (!PersistSettings())
+        {
+            return;
+        }
+
+        Loc.Apply(value.Code);
+        ApplyLocalizedChrome();
+        RefreshLogOptions();
+        RefreshSnapshotStatus();
+        RefreshToolsStatus();
+        RefreshInsights();
+        RefreshLocalizedRuntimeMessages();
+        ApplyFilter();
+        if (SelectedIncident != null)
+        {
+            Detail.Load(SelectedIncident.Item, ResolveAutoFix(SelectedIncident.Item));
+        }
+
+        if (App.MainWindow != null)
+        {
+            App.MainWindow.Title = Loc.T("App.Title");
+        }
+
+        StatusMessage = Loc.T("Lang.RestartHint");
+        TelemetryService.Track("language_changed", new Dictionary<string, string>
+        {
+            ["lang"] = Loc.EffectiveLanguage,
+            ["preference"] = value.Code
+        });
+    }
+
+    partial void OnSelectedThemeChanged(ThemeOption? value)
+    {
+        if (_isHydratingSettings || value == null)
+        {
+            return;
+        }
+
+        _settings.UiTheme = value.Id;
+        if (!PersistSettings())
+        {
+            return;
+        }
+
+        AppThemeService.Apply(value.Id);
+        StatusMessage = Loc.T("Theme.Applied", value.DisplayName);
+        TelemetryService.Track("theme_changed", new Dictionary<string, string>
+        {
+            ["theme"] = value.Id
+        });
+    }
+
+    private void RefreshLogOptions()
+    {
+        var selectedName = SelectedLog?.LogName;
+        LogOptions.Clear();
+        LogOptions.Add(new LogOption { DisplayName = Loc.T("Log.System"), LogName = "System" });
+        LogOptions.Add(new LogOption { DisplayName = Loc.T("Log.Application"), LogName = "Application" });
+        LogOptions.Add(new LogOption { DisplayName = Loc.T("Log.Security"), LogName = "Security" });
+        SelectedLog = LogOptions.FirstOrDefault(l => l.LogName == selectedName) ?? LogOptions[0];
+    }
+
+    private void ApplyLocalizedChrome()
+    {
+        OnPropertyChanged(nameof(Strings));
+        LanguageOptions[0].DisplayName = AppLanguage.DisplayName(AppLanguage.System);
+        foreach (var theme in ThemeOptions)
+        {
+            theme.DisplayName = AppThemeService.DisplayName(theme.Id);
+        }
+
+        if (ErrorCount == 0 && WarningCount == 0 && !IsLoading)
+        {
+            HealthSubtitle = Loc.T("Health.SubtitleOk");
+        }
+        else if (!IsLoading)
+        {
+            HealthSubtitle = Loc.T("Health.SubtitleStats", ErrorCount, WarningCount, RiskScore);
+        }
+    }
+
     private bool PersistSettings()
     {
         if (!AppSettingsStore.TrySave(_settings, out var error))
         {
-            StatusMessage = $"Impossible d'enregistrer les options : {error}";
+            StatusMessage = Loc.T("Status.SettingsSaveFailed", error ?? string.Empty);
             return false;
         }
 
@@ -354,7 +520,7 @@ public partial class MainViewModel : ObservableObject
         var token = _loadCts.Token;
 
         IsLoading = true;
-        StatusMessage = "Chargement des incidents…";
+        StatusMessage = Loc.T("Status.LoadingIncidents");
         ExportMessage = string.Empty;
         HasExportMessage = false;
 
@@ -374,9 +540,10 @@ public partial class MainViewModel : ObservableObject
             RefreshInsights();
             ApplyFilter();
 
+            _lastLoadedCount = events.Count;
             StatusMessage = IsAdmin
-                ? $"Mis à jour · {events.Count} incident(s)"
-                : "Certaines données peuvent être limitées sans droits administrateur";
+                ? Loc.T("Status.UpdatedCount", events.Count)
+                : Loc.T("Status.LimitedWithoutAdmin");
 
             TelemetryService.Track("events_loaded", new Dictionary<string, string>
             {
@@ -386,7 +553,7 @@ public partial class MainViewModel : ObservableObject
         }
         catch (OperationCanceledException)
         {
-            StatusMessage = "Chargement annulé";
+            StatusMessage = Loc.T("Status.LoadCancelled");
         }
         catch (Exception ex)
         {
@@ -394,13 +561,13 @@ public partial class MainViewModel : ObservableObject
             _allEvents.Clear();
             Incidents.Clear();
             IsEmpty = true;
-            EmptyTitle = "Impossible de lire les journaux";
+            EmptyTitle = Loc.T("Empty.LoadFailed.Title");
             EmptyMessage = IsAdmin
-                ? $"Une erreur s'est produite : {ex.Message}"
-                : "Lancez l'application en administrateur pour lire les journaux Windows.";
-            HealthHeadline = "Lecture impossible";
+                ? Loc.T("Empty.LoadFailed.Message", ex.Message)
+                : Loc.T("Empty.LoadFailed.AdminRequired");
+            HealthHeadline = Loc.T("Health.ReadFailed");
             HealthSubtitle = EmptyMessage;
-            StatusMessage = "Erreur de lecture";
+            StatusMessage = Loc.T("Status.ReadError");
             Detail.Clear();
         }
         finally
@@ -422,7 +589,7 @@ public partial class MainViewModel : ObservableObject
         {
             if (_allEvents.Count == 0)
             {
-                StatusMessage = "Aucun incident à exporter. Actualisez d'abord.";
+                StatusMessage = Loc.T("Export.NoData");
                 ExportMessage = StatusMessage;
                 HasExportMessage = true;
                 return;
@@ -430,14 +597,14 @@ public partial class MainViewModel : ObservableObject
 
             var directory = ResolveWritableExportDirectory();
             var path = await _exportService.ExportCsvAsync(_allEvents, directory);
-            ExportMessage = $"Export CSV : {path}";
+            ExportMessage = Loc.T("Export.CsvPath", path);
             HasExportMessage = true;
-            StatusMessage = "Export CSV terminé";
+            StatusMessage = Loc.T("Export.CsvDone");
             TelemetryService.Track("export_csv");
         }
         catch (Exception ex)
         {
-            ExportMessage = $"Échec de l'export CSV : {ex.Message}";
+            ExportMessage = Loc.T("Export.CsvFailed", ex.Message);
             HasExportMessage = true;
             StatusMessage = ExportMessage;
         }
@@ -450,7 +617,7 @@ public partial class MainViewModel : ObservableObject
         {
             if (_allEvents.Count == 0)
             {
-                StatusMessage = "Aucun incident à exporter. Actualisez d'abord.";
+                StatusMessage = Loc.T("Export.NoData");
                 ExportMessage = StatusMessage;
                 HasExportMessage = true;
                 return;
@@ -459,14 +626,14 @@ public partial class MainViewModel : ObservableObject
             var directory = ResolveWritableExportDirectory();
             var insights = _insightsService.Build(_allEvents);
             var path = await _exportService.ExportJsonAsync(_allEvents, insights, directory);
-            ExportMessage = $"Rapport JSON : {path}";
+            ExportMessage = Loc.T("Export.JsonPath", path);
             HasExportMessage = true;
-            StatusMessage = "Export JSON terminé";
+            StatusMessage = Loc.T("Export.JsonDone");
             TelemetryService.Track("export_json");
         }
         catch (Exception ex)
         {
-            ExportMessage = $"Échec de l'export JSON : {ex.Message}";
+            ExportMessage = Loc.T("Export.JsonFailed", ex.Message);
             HasExportMessage = true;
             StatusMessage = ExportMessage;
         }
@@ -478,15 +645,34 @@ public partial class MainViewModel : ObservableObject
         try
         {
             var directory = ResolveWritableExportDirectory();
+            if (!Directory.Exists(directory))
+            {
+                throw new DirectoryNotFoundException(directory);
+            }
+
+            // Only open our own export directory — never pass untrusted paths to shell.
+            var full = Path.GetFullPath(directory);
+            var allowedRoot = Path.GetFullPath(AppPaths.ExportDirectory);
+            var allowedFallback = Path.GetFullPath(Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "WinBeacon",
+                "Exports"));
+
+            if (!full.StartsWith(allowedRoot, StringComparison.OrdinalIgnoreCase) &&
+                !full.StartsWith(allowedFallback, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(Loc.T("Export.FolderNotAllowed"));
+            }
+
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
             {
-                FileName = directory,
+                FileName = full,
                 UseShellExecute = true
             });
         }
         catch (Exception ex)
         {
-            ExportMessage = $"Impossible d'ouvrir le dossier : {ex.Message}";
+            ExportMessage = Loc.T("Export.OpenFolderFailed", ex.Message);
             HasExportMessage = true;
             StatusMessage = ExportMessage;
         }
@@ -502,14 +688,14 @@ public partial class MainViewModel : ObservableObject
 
         var fallback = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "EventBeaconTool",
+            "WinBeacon",
             "Exports");
         if (AppPaths.TryEnsureWritableDirectory(fallback, out _))
         {
             return fallback;
         }
 
-        throw new IOException(error ?? "Dossier d'export inaccessible.");
+        throw new IOException(error ?? Loc.T("Export.FolderInaccessible"));
     }
 
     [RelayCommand]
@@ -524,7 +710,7 @@ public partial class MainViewModel : ObservableObject
             ClearNewMarkers();
             RefreshSnapshotStatus();
             ApplyFilter();
-            StatusMessage = "Point de comparaison enregistré";
+            StatusMessage = Loc.T("Snapshot.Saved");
             TelemetryService.Track("snapshot_created", new Dictionary<string, string>
             {
                 ["count"] = _allEvents.Count.ToString()
@@ -532,7 +718,7 @@ public partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Impossible d'enregistrer le snapshot : {ex.Message}";
+            StatusMessage = Loc.T("Snapshot.SaveFailed", ex.Message);
         }
     }
 
@@ -541,7 +727,7 @@ public partial class MainViewModel : ObservableObject
     {
         if (!_snapshotManager.SnapshotExists())
         {
-            StatusMessage = "Aucun point de comparaison. Enregistrez-en un d'abord.";
+            StatusMessage = Loc.T("Snapshot.NoneToCompare");
             return;
         }
 
@@ -550,8 +736,8 @@ public partial class MainViewModel : ObservableObject
         ComparisonActive = true;
         var date = _snapshotManager.GetSnapshotDate();
         ComparisonLabel = date.HasValue
-            ? $"{_newEventKeys.Count} nouveau(x) depuis le {date:dd/MM/yyyy HH:mm}"
-            : $"{_newEventKeys.Count} nouveau(x) depuis le snapshot";
+            ? Loc.T("Snapshot.NewSinceDate", _newEventKeys.Count, date.Value.ToString("g", System.Globalization.CultureInfo.CurrentUICulture))
+            : Loc.T("Snapshot.NewSinceSnapshot", _newEventKeys.Count);
 
         ApplyComparisonMarkers();
         ApplyFilter();
@@ -571,7 +757,7 @@ public partial class MainViewModel : ObservableObject
         _newEventKeys = [];
         ClearNewMarkers();
         ApplyFilter();
-        StatusMessage = "Comparaison désactivée";
+        StatusMessage = Loc.T("Snapshot.ComparisonCleared");
     }
 
     [RelayCommand]
@@ -579,20 +765,20 @@ public partial class MainViewModel : ObservableObject
     {
         if (SelectedIncident == null)
         {
-            StatusMessage = "Sélectionnez un incident d'abord";
+            StatusMessage = Loc.T("Status.SelectIncidentFirst");
             return;
         }
 
-        StatusMessage = "Préparation du résumé…";
+        StatusMessage = Loc.T("Status.PreparingSummary");
         var summary = await _aiAssistantService.BuildIncidentSummaryAsync(SelectedIncident.Item, _settings);
         Detail.SetAssistantSummary(summary);
-        StatusMessage = summary.StartsWith("Mode IA cloud", StringComparison.Ordinal)
-            ? "Résumé cloud prêt"
-            : (AiBetaEnabled ? "Résumé IA bêta (local) prêt" : "Résumé local prêt");
+        StatusMessage = summary.StartsWith(Loc.T("Ai.CloudMode"), StringComparison.Ordinal)
+            ? Loc.T("Status.SummaryCloudReady")
+            : (AiBetaEnabled ? Loc.T("Status.SummaryBetaReady") : Loc.T("Status.SummaryLocalReady"));
         TelemetryService.Track("assistant_explain", new Dictionary<string, string>
         {
             ["aiBeta"] = AiBetaEnabled ? "true" : "false",
-            ["cloud"] = AiAssistantService.IsCloudConfigured(_settings) ? "true" : "false",
+            ["cloud"] = AiAssistantService.IsCloudConfigured(_settings) && AiCloudDataConsent ? "true" : "false",
             ["eventId"] = SelectedIncident.Item.EventId.ToString()
         });
     }
@@ -607,52 +793,48 @@ public partial class MainViewModel : ObservableObject
     {
         if (SelectedIncident == null)
         {
-            StatusMessage = "Sélectionnez un incident d'abord";
+            StatusMessage = Loc.T("Status.SelectIncidentFirst");
             return;
         }
 
         try
         {
             RecommendationFeedbackStore.Add(SelectedIncident.Item, useful);
-            var msg = useful ? "Merci — marqué comme utile." : "Merci — on notera que ce n'était pas utile.";
+            var msg = useful ? Loc.T("Feedback.Useful") : Loc.T("Feedback.NotUseful");
             Detail.SetFeedbackMessage(msg);
             StatusMessage = msg;
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Impossible d'enregistrer le feedback : {ex.Message}";
+            StatusMessage = Loc.T("Feedback.SaveFailed", ex.Message);
             Detail.SetFeedbackMessage(StatusMessage);
         }
     }
 
-    [RelayCommand]
-    private async Task FlushDnsAsync()
-    {
-        await RunMaintenanceAsync(
-            "Vidage du cache DNS",
+    public Task ExecuteConfirmedFlushDnsAsync()
+        => RunMaintenanceAsync(
+            "Maintenance.Label.FlushDns",
             () => SystemMaintenanceHelper.FlushDnsAsync(),
             "flush_dns");
-    }
 
-    [RelayCommand]
-    private async Task ResetNetworkAsync()
-    {
-        await RunMaintenanceAsync(
-            "Réinitialisation réseau",
+    public Task ExecuteConfirmedResetNetworkAsync()
+        => RunMaintenanceAsync(
+            "Maintenance.Label.ResetNetwork",
             () => SystemMaintenanceHelper.ResetNetworkAsync(),
             "reset_network");
-    }
 
-    [RelayCommand]
-    private async Task RunSfcAsync()
-    {
-        await RunMaintenanceAsync(
-            "Vérification des fichiers système (SFC)",
+    public Task ExecuteConfirmedRunSfcAsync()
+        => RunMaintenanceAsync(
+            "Maintenance.Label.Sfc",
             () => SystemMaintenanceHelper.RunSystemFileCheckerAsync(),
-            "sfc_scan");
-    }
+            "sfc_scan",
+            consoleHintKey: "Action.SfcConsoleHint");
 
-    private async Task RunMaintenanceAsync(string label, Func<Task<CommandResult>> action, string telemetryName)
+    private async Task RunMaintenanceAsync(
+        string labelKey,
+        Func<Task<CommandResult>> action,
+        string telemetryName,
+        string? consoleHintKey = null)
     {
         if (!ShowMaintenance)
         {
@@ -661,22 +843,27 @@ public partial class MainViewModel : ObservableObject
 
         if (!IsAdmin)
         {
-            MaintenanceMessage = "Les actions de maintenance nécessitent les droits administrateur.";
+            MaintenanceMessage = Loc.T("Maintenance.AdminRequired");
             HasMaintenanceMessage = true;
             return;
         }
 
+        var label = Loc.T(labelKey);
         IsBusyMaintenance = true;
-        MaintenanceMessage = $"{label} en cours… Cela peut prendre plusieurs minutes.";
+        MaintenanceMessage = string.IsNullOrWhiteSpace(consoleHintKey)
+            ? Loc.T("Action.InProgressLong", label)
+            : Loc.T("Action.InProgressLong", label) + "\n" + Loc.T(consoleHintKey);
         HasMaintenanceMessage = true;
         StatusMessage = MaintenanceMessage;
 
         try
         {
             var result = await action();
-            MaintenanceMessage = result.GetUserSummary(label);
+            _lastMaintenanceActionKey = labelKey;
+            _lastMaintenanceResult = result;
+            MaintenanceMessage = result.GetUserSummary(Loc.T(labelKey));
             HasMaintenanceMessage = true;
-            StatusMessage = MaintenanceMessage;
+            StatusMessage = BuildCombinedStatus(MaintenanceMessage);
             TelemetryService.Track(telemetryName, new Dictionary<string, string>
             {
                 ["success"] = result.Success ? "true" : "false",
@@ -685,15 +872,48 @@ public partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            MaintenanceMessage = $"{label} a échoué : {ex.Message}";
+            _lastMaintenanceActionKey = labelKey;
+            _lastMaintenanceResult = null;
+            MaintenanceMessage = Loc.T("Action.Failed", Loc.T(labelKey), ex.Message);
             HasMaintenanceMessage = true;
-            StatusMessage = MaintenanceMessage;
+            StatusMessage = BuildCombinedStatus(MaintenanceMessage);
             TelemetryService.TrackException(telemetryName + "_failed", ex);
         }
         finally
         {
             IsBusyMaintenance = false;
         }
+    }
+
+    private void RefreshLocalizedRuntimeMessages()
+    {
+        if (_lastMaintenanceResult != null && !string.IsNullOrWhiteSpace(_lastMaintenanceActionKey))
+        {
+            MaintenanceMessage = _lastMaintenanceResult.GetUserSummary(Loc.T(_lastMaintenanceActionKey));
+            HasMaintenanceMessage = true;
+            StatusMessage = BuildCombinedStatus(MaintenanceMessage);
+            return;
+        }
+
+        if (_lastLoadedCount > 0)
+        {
+            StatusMessage = IsAdmin
+                ? Loc.T("Status.UpdatedCount", _lastLoadedCount)
+                : Loc.T("Status.LimitedWithoutAdmin");
+        }
+    }
+
+    private string BuildCombinedStatus(string maintenanceSummary)
+    {
+        if (_lastLoadedCount <= 0)
+        {
+            return maintenanceSummary;
+        }
+
+        var loadPart = IsAdmin
+            ? Loc.T("Status.UpdatedCount", _lastLoadedCount)
+            : Loc.T("Status.LimitedWithoutAdmin");
+        return $"{loadPart} · {maintenanceSummary}";
     }
 
     private void RefreshInsights()
@@ -704,8 +924,8 @@ public partial class MainViewModel : ObservableObject
         WarningCount = insights.WarningCount;
         RiskScore = insights.RiskScore;
         HealthSubtitle = insights.CriticalCount == 0 && insights.WarningCount == 0
-            ? "Aucun problème récent détecté"
-            : $"{insights.CriticalCount} erreur(s) · {insights.WarningCount} avertissement(s) · risque {insights.RiskScore}/100";
+            ? Loc.T("Health.SubtitleOk")
+            : Loc.T("Health.SubtitleStats", insights.CriticalCount, insights.WarningCount, insights.RiskScore);
 
         TimelineBuckets.Clear();
         foreach (var bucket in _timelineService.BuildLast24Hours(_allEvents))
@@ -719,18 +939,36 @@ public partial class MainViewModel : ObservableObject
         HasSnapshot = _snapshotManager.SnapshotExists();
         var date = _snapshotManager.GetSnapshotDate();
         SnapshotStatus = HasSnapshot && date.HasValue
-            ? $"Snapshot du {date:dd/MM/yyyy HH:mm}"
-            : "Aucun point de comparaison";
+            ? Loc.T("Snapshot.Of", date.Value.ToString("g", System.Globalization.CultureInfo.CurrentUICulture))
+            : Loc.T("Snapshot.None");
     }
 
     private void RefreshToolsStatus()
     {
         var telemetry = TelemetryOptIn ? "ON" : "OFF";
         var ai = AiBetaEnabled ? "ON" : "OFF";
-        ToolsStatus = $"Télémétrie {telemetry} · IA bêta {ai}";
-        AiCloudStatus = AiAssistantService.IsCloudConfigured(_settings)
-            ? "Cloud IA : configuré (clé détectée)"
-            : "Cloud IA : non configuré (local uniquement)";
+        ToolsStatus = Loc.T("Options.ToolsStatus", telemetry, ai);
+
+        if (!AiBetaEnabled)
+        {
+            AiCloudStatus = Loc.T("Cloud.Status.Disabled");
+        }
+        else if (!AiCloudDataConsent)
+        {
+            AiCloudStatus = Loc.T("Cloud.Status.ConsentRequired");
+        }
+        else if (AiAssistantService.IsCloudConfigured(_settings))
+        {
+            AiCloudStatus = Loc.T("Cloud.Status.Ready");
+        }
+        else if (!string.IsNullOrWhiteSpace(AiEndpoint) && !AiEndpointPolicy.IsAllowed(AiEndpoint))
+        {
+            AiCloudStatus = Loc.T("Cloud.Status.EndpointRejected");
+        }
+        else
+        {
+            AiCloudStatus = Loc.T("Cloud.Status.NotConfigured");
+        }
     }
 
     private void ApplyComparisonMarkers()
@@ -770,38 +1008,56 @@ public partial class MainViewModel : ObservableObject
                 Contains(e.Tag?.Name, query));
         }
 
-        var list = filtered.ToList();
+        var list = filtered as List<EventItem> ?? filtered.ToList();
+
+        // Skip UI churn when the visible set is unchanged.
+        if (list.Count == Incidents.Count &&
+            !list.Where((item, index) => !ReferenceEquals(item, Incidents[index].Item)).Any())
+        {
+            UpdateEmptyState(list.Count);
+            return;
+        }
+
         Incidents.Clear();
         foreach (var item in list)
         {
             Incidents.Add(new IncidentCardViewModel(item));
         }
 
-        IsEmpty = Incidents.Count == 0;
-        if (IsEmpty)
+        UpdateEmptyState(Incidents.Count);
+        if (Incidents.Count == 0)
         {
-            if (_comparisonMode && _allEvents.Count > 0)
-            {
-                EmptyTitle = "Aucun nouvel incident";
-                EmptyMessage = "Rien de nouveau depuis votre dernier point de comparaison.";
-            }
-            else if (_allEvents.Count == 0)
-            {
-                EmptyTitle = "Aucun incident récent";
-                EmptyMessage = "C'est une bonne nouvelle : aucune erreur ni avertissement dans ce journal.";
-            }
-            else
-            {
-                EmptyTitle = "Aucun résultat";
-                EmptyMessage = "Essayez un autre mot-clé (ex. disque, réseau, mémoire).";
-            }
-
             SelectedIncident = null;
             Detail.Clear();
         }
         else if (SelectedIncident == null || !Incidents.Any(i => ReferenceEquals(i.Item, SelectedIncident.Item)))
         {
             SelectedIncident = Incidents[0];
+        }
+    }
+
+    private void UpdateEmptyState(int visibleCount)
+    {
+        IsEmpty = visibleCount == 0;
+        if (!IsEmpty)
+        {
+            return;
+        }
+
+        if (_comparisonMode && _allEvents.Count > 0)
+        {
+            EmptyTitle = Loc.T("Empty.NoNew.Title");
+            EmptyMessage = Loc.T("Empty.NoNew.Message");
+        }
+        else if (_allEvents.Count == 0)
+        {
+            EmptyTitle = Loc.T("Empty.NoIncidents.Title");
+            EmptyMessage = Loc.T("Empty.NoIncidents.Message");
+        }
+        else
+        {
+            EmptyTitle = Loc.T("Empty.NoResults.Title");
+            EmptyMessage = Loc.T("Empty.NoResults.Message");
         }
     }
 

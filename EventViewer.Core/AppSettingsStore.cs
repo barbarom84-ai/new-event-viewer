@@ -24,8 +24,16 @@ namespace EventViewer.Core
                     return new AppSettings();
                 }
 
-                var json = File.ReadAllText(filePath);
-                return JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? new AppSettings();
+                var json = SafeFileIO.ReadAllTextLimited(filePath);
+                if (string.IsNullOrWhiteSpace(json))
+                {
+                    return new AppSettings();
+                }
+
+                var settings = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? new AppSettings();
+                settings.HydrateSecretsFromStore();
+                MigrateLegacyPlaintextKey(settings, json);
+                return settings;
             }
             catch
             {
@@ -43,6 +51,7 @@ namespace EventViewer.Core
 
             try
             {
+                settings.PrepareForPersist();
                 settings.LastUpdatedUtc = DateTime.UtcNow;
                 AppPaths.EnsureDirectory(AppPaths.StateDirectory);
                 var json = JsonSerializer.Serialize(settings, JsonOptions);
@@ -62,5 +71,39 @@ namespace EventViewer.Core
 
         public static void Save(AppSettings settings)
             => TrySave(settings, out _);
+
+        /// <summary>
+        /// One-shot migration: if an old plaintext AiApiKey field exists in JSON, encrypt it and rewrite.
+        /// </summary>
+        private static void MigrateLegacyPlaintextKey(AppSettings settings, string rawJson)
+        {
+            if (!string.IsNullOrEmpty(settings.AiApiKeyProtected) || string.IsNullOrEmpty(rawJson))
+            {
+                return;
+            }
+
+            try
+            {
+                using var doc = JsonDocument.Parse(rawJson);
+                if (!doc.RootElement.TryGetProperty("AiApiKey", out var keyProp) &&
+                    !doc.RootElement.TryGetProperty("aiApiKey", out keyProp))
+                {
+                    return;
+                }
+
+                var legacy = keyProp.GetString()?.Trim() ?? string.Empty;
+                if (string.IsNullOrEmpty(legacy))
+                {
+                    return;
+                }
+
+                settings.SetApiKey(legacy);
+                TrySave(settings, out _);
+            }
+            catch
+            {
+                // Ignore migration failures; user can re-enter the key.
+            }
+        }
     }
 }

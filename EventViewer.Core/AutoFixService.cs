@@ -10,7 +10,9 @@ public enum AutoFixKind
     DefenderQuickScan,
     OpenNetworkSettings,
     OpenStorageSettings,
-    OpenWindowsUpdate
+    OpenWindowsUpdate,
+    OpenReliabilityHistory,
+    OpenDeviceManager
 }
 
 public sealed class AutoFixRecommendation
@@ -35,11 +37,17 @@ public sealed class AutoFixService
     {
         if (item == null)
         {
-            return None("Sélectionnez un incident", "Choisissez une ligne pour proposer une correction.");
+            return None(Loc.T("AutoFix.None.SelectTitle"), Loc.T("AutoFix.None.SelectExplanation"));
         }
 
-        var haystack = $"{item.Tag?.Name} {item.Source} {item.ExplanationTitle} {item.Message} {item.FullMessage}".ToLowerInvariant();
+        var haystack = $"{item.Tag?.Name} {item.Source} {item.ExplanationTitle} {item.Message}".ToLowerInvariant();
         var id = item.EventId;
+
+        // Common benign DCOM (10016) — no network auto-fix.
+        if (id == 10016 || TagDetector.IsDcom(item.Source, item.Message) || TagDetector.IsDcom(item.Source, item.ExplanationTitle))
+        {
+            return None(Loc.T("AutoFix.Dcom.Title"), Loc.T("AutoFix.Dcom.Explanation"));
+        }
 
         AutoFixRecommendation Pick(AutoFixRecommendation preferred, AutoFixRecommendation storeSafe)
             => isStoreBuild && !preferred.IsAvailableInStore ? storeSafe : preferred;
@@ -47,107 +55,136 @@ public sealed class AutoFixService
         if (ContainsAny(haystack, "dns", "name resolution", "résolution") || id is 8003 or 1014)
         {
             return Pick(
-                Build(AutoFixKind.FlushDns, "Corriger le DNS", "Vider le cache DNS",
-                    "Souvent suffisant quand la navigation ou la résolution de noms plante.",
-                    "On va vider le cache DNS de Windows. Action rapide et sans danger.",
+                Build(AutoFixKind.FlushDns,
+                    Loc.T("AutoFix.Dns.Button"), Loc.T("AutoFix.Dns.Title"),
+                    Loc.T("AutoFix.Dns.Explanation"), Loc.T("AutoFix.Dns.Confirm"),
                     requiresAdmin: true, store: false),
-                Build(AutoFixKind.OpenNetworkSettings, "Ouvrir Réglages réseau", "Vérifier le réseau",
-                    "Ouvre les paramètres réseau Windows. Pour vider le DNS automatiquement, utilisez la version USB.",
-                    "Ouvrir les paramètres réseau ?", requiresAdmin: false, store: true));
+                Build(AutoFixKind.OpenNetworkSettings,
+                    Loc.T("AutoFix.NetworkSettings.Button"), Loc.T("AutoFix.NetworkSettings.Title"),
+                    Loc.T("AutoFix.NetworkSettings.ExplanationStoreDns"), Loc.T("AutoFix.NetworkSettings.Confirm"),
+                    requiresAdmin: false, store: true));
         }
 
         if (ContainsAny(haystack, "network", "réseau", "tcp", "winsock", "ethernet", "wifi", "connexion")
-            || string.Equals(item.Tag?.Name, "RÉSEAU", StringComparison.OrdinalIgnoreCase))
+            || string.Equals(item.Tag?.Key, "Network", StringComparison.OrdinalIgnoreCase))
         {
             if (ContainsAny(haystack, "winsock", "tcp/ip", "adapter", "carte réseau"))
             {
                 return Pick(
-                    Build(AutoFixKind.ResetNetwork, "Réparer le réseau", "Réinitialiser la pile réseau",
-                        "Remet Windows réseau à zéro (Winsock + TCP/IP). Un redémarrage peut être demandé ensuite.",
-                        "Réinitialiser le réseau maintenant ? Cela peut couper Internet brièvement. Un redémarrage peut être nécessaire.",
+                    Build(AutoFixKind.ResetNetwork,
+                        Loc.T("AutoFix.ResetNetwork.Button"), Loc.T("AutoFix.ResetNetwork.Title"),
+                        Loc.T("AutoFix.ResetNetwork.Explanation"), Loc.T("AutoFix.ResetNetwork.Confirm"),
                         requiresAdmin: true, store: false),
-                    Build(AutoFixKind.OpenNetworkSettings, "Ouvrir Réglages réseau", "Vérifier le réseau",
-                        "Ouvre les paramètres réseau. La réinitialisation complète est disponible en version USB.",
-                        "Ouvrir les paramètres réseau ?", requiresAdmin: false, store: true));
+                    Build(AutoFixKind.OpenNetworkSettings,
+                        Loc.T("AutoFix.NetworkSettings.Button"), Loc.T("AutoFix.NetworkSettings.Title"),
+                        Loc.T("AutoFix.NetworkSettings.ExplanationStoreReset"), Loc.T("AutoFix.NetworkSettings.Confirm"),
+                        requiresAdmin: false, store: true));
             }
 
             return Pick(
-                Build(AutoFixKind.FlushDns, "Corriger le réseau (DNS)", "Premier geste réseau",
-                    "On commence par vider le cache DNS, la correction la plus sûre.",
-                    "Vider le cache DNS maintenant ?", requiresAdmin: true, store: false),
-                Build(AutoFixKind.OpenNetworkSettings, "Ouvrir Réglages réseau", "Premier geste réseau",
-                    "Ouvre les paramètres réseau pour vérifier connexion / Wi‑Fi / résolution.",
-                    "Ouvrir les paramètres réseau ?", requiresAdmin: false, store: true));
+                Build(AutoFixKind.FlushDns,
+                    Loc.T("AutoFix.NetworkDns.Button"), Loc.T("AutoFix.NetworkDns.Title"),
+                    Loc.T("AutoFix.NetworkDns.Explanation"), Loc.T("AutoFix.NetworkDns.Confirm"),
+                    requiresAdmin: true, store: false),
+                Build(AutoFixKind.OpenNetworkSettings,
+                    Loc.T("AutoFix.NetworkSettings.Button"), Loc.T("AutoFix.NetworkDns.Title"),
+                    Loc.T("AutoFix.NetworkSettings.ExplanationFirst"), Loc.T("AutoFix.NetworkSettings.Confirm"),
+                    requiresAdmin: false, store: true));
         }
 
         if (ContainsAny(haystack, "disk", "disque", "espace", "volume", "ntfs", "storage")
             || id is 153 or 2019
-            || string.Equals(item.Tag?.Name, "MATÉRIEL", StringComparison.OrdinalIgnoreCase))
+            || string.Equals(item.Tag?.Key, "Hardware", StringComparison.OrdinalIgnoreCase))
         {
             if (ContainsAny(haystack, "espace", "space", "low") || id == 153)
             {
-                return Build(AutoFixKind.DiskCleanup, "Libérer de l'espace", "Nettoyage de disque",
-                    "Ouvre l'outil Windows de nettoyage pour récupérer de l'espace.",
-                    "Ouvrir le Nettoyage de disque Windows ?", requiresAdmin: false, store: true);
+                return Build(AutoFixKind.DiskCleanup,
+                    Loc.T("AutoFix.DiskCleanup.Button"), Loc.T("AutoFix.DiskCleanup.Title"),
+                    Loc.T("AutoFix.DiskCleanup.Explanation"), Loc.T("AutoFix.DiskCleanup.Confirm"),
+                    requiresAdmin: false, store: true);
             }
 
-            return Build(AutoFixKind.OpenStorageSettings, "Ouvrir Stockage", "Vérifier l'espace disque",
-                "Ouvre les paramètres Stockage Windows pour voir ce qui prend de la place.",
-                "Ouvrir les paramètres de stockage ?", requiresAdmin: false, store: true);
+            return Build(AutoFixKind.OpenStorageSettings,
+                Loc.T("AutoFix.Storage.Button"), Loc.T("AutoFix.Storage.Title"),
+                Loc.T("AutoFix.Storage.Explanation"), Loc.T("AutoFix.Storage.Confirm"),
+                requiresAdmin: false, store: true);
         }
 
         if (ContainsAny(haystack, "defender", "malware", "virus", "threat", "menace", "security")
-            || string.Equals(item.Tag?.Name, "SÉCURITÉ", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(item.Tag?.Key, "Security", StringComparison.OrdinalIgnoreCase)
             || id is 1116 or 1117)
         {
             return Pick(
-                Build(AutoFixKind.DefenderQuickScan, "Analyser avec Defender", "Analyse rapide Windows Defender",
-                    "Lance une analyse rapide pour vérifier s'il reste une menace.",
-                    "Lancer une analyse rapide Windows Defender ?", requiresAdmin: true, store: false),
-                Build(AutoFixKind.OpenWindowsUpdate, "Ouvrir Windows Update", "Vérifier les protections",
-                    "Dans la version Store, ouvrez Windows Update / Sécurité Windows manuellement.",
-                    "Ouvrir Windows Update ?", requiresAdmin: false, store: true));
+                Build(AutoFixKind.DefenderQuickScan,
+                    Loc.T("AutoFix.Defender.Button"), Loc.T("AutoFix.Defender.Title"),
+                    Loc.T("AutoFix.Defender.Explanation"), Loc.T("AutoFix.Defender.Confirm"),
+                    requiresAdmin: true, store: false),
+                Build(AutoFixKind.OpenWindowsUpdate,
+                    Loc.T("AutoFix.Update.Button"), Loc.T("AutoFix.Update.TitleCheck"),
+                    Loc.T("AutoFix.Update.ExplanationStoreSecurity"), Loc.T("AutoFix.Update.Confirm"),
+                    requiresAdmin: false, store: true));
         }
 
         if (ContainsAny(haystack, "update", "mise à jour", "windows update") || id is 19 or 20)
         {
-            return Build(AutoFixKind.OpenWindowsUpdate, "Ouvrir Windows Update", "Vérifier les mises à jour",
-                "Ouvre Windows Update pour réessayer l'installation.",
-                "Ouvrir Windows Update ?", requiresAdmin: false, store: true);
+            return Build(AutoFixKind.OpenWindowsUpdate,
+                Loc.T("AutoFix.Update.Button"), Loc.T("AutoFix.Update.Title"),
+                Loc.T("AutoFix.Update.Explanation"), Loc.T("AutoFix.Update.Confirm"),
+                requiresAdmin: false, store: true);
+        }
+
+        // BSOD / bugcheck / unexpected shutdown — actionable first steps (not only dump tools).
+        if (IsBugcheckLike(item, haystack))
+        {
+            return Build(
+                AutoFixKind.OpenReliabilityHistory,
+                Loc.T("AutoFix.Bugcheck.Button"),
+                Loc.T("AutoFix.Bugcheck.Title"),
+                Loc.T("AutoFix.Bugcheck.Explanation"),
+                Loc.T("AutoFix.Bugcheck.Confirm"),
+                requiresAdmin: false,
+                store: true);
+        }
+
+        if (ContainsAny(haystack, "driver", "pilote", "device") || id == 219)
+        {
+            return Build(AutoFixKind.OpenDeviceManager,
+                Loc.T("AutoFix.Drivers.Button"), Loc.T("AutoFix.Drivers.Title"),
+                Loc.T("AutoFix.Drivers.Explanation"), Loc.T("AutoFix.Drivers.Confirm"),
+                requiresAdmin: false, store: true);
         }
 
         if (ContainsAny(haystack, "service", "corrupt", "fichier système", "integrity")
-            || string.Equals(item.Tag?.Name, "SERVICE", StringComparison.OrdinalIgnoreCase)
-            || id is 7000 or 7001 or 7031 or 7034 or 41 or 6008)
+            || string.Equals(item.Tag?.Key, "Service", StringComparison.OrdinalIgnoreCase)
+            || id is 7000 or 7001 or 7031 or 7034)
         {
             return Pick(
-                Build(AutoFixKind.RunSfc, "Réparer Windows (SFC)", "Vérification des fichiers système",
-                    "SFC cherche et répare les fichiers Windows corrompus. Cela peut prendre 10 à 30 minutes.",
-                    "Lancer SFC /scannow ? Laissez l'ordinateur allumé, cela peut prendre longtemps.",
+                Build(AutoFixKind.RunSfc,
+                    Loc.T("AutoFix.Sfc.Button"), Loc.T("AutoFix.Sfc.Title"),
+                    Loc.T("AutoFix.Sfc.Explanation"), Loc.T("AutoFix.Sfc.Confirm"),
                     requiresAdmin: true, store: false, longRunning: true),
-                Build(AutoFixKind.OpenWindowsUpdate, "Vérifier les mises à jour", "Geste recommandé",
-                    "La réparation SFC n'est pas disponible dans le Store. Mettez Windows à jour, puis redémarrez.",
-                    "Ouvrir Windows Update ?", requiresAdmin: false, store: true));
+                Build(AutoFixKind.OpenWindowsUpdate,
+                    Loc.T("AutoFix.Update.Title"), Loc.T("AutoFix.Update.TitleRecommended"),
+                    Loc.T("AutoFix.Update.ExplanationStoreSfc"), Loc.T("AutoFix.Update.Confirm"),
+                    requiresAdmin: false, store: true));
         }
 
         if (ContainsAny(haystack, "memory", "mémoire", "ram", "out of memory")
-            || string.Equals(item.Tag?.Name, "MÉMOIRE", StringComparison.OrdinalIgnoreCase))
+            || string.Equals(item.Tag?.Name, "MÉMOIRE", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(item.Tag?.Key, "Memory", StringComparison.OrdinalIgnoreCase))
         {
-            return None(
-                "Fermez des applications puis redémarrez",
-                "Pour la mémoire, le geste le plus sûr est de fermer les apps lourdes puis redémarrer le PC.");
+            return None(Loc.T("AutoFix.Memory.Title"), Loc.T("AutoFix.Memory.Explanation"));
         }
 
         if (isStoreBuild)
         {
-            return Build(AutoFixKind.OpenWindowsUpdate, "Vérifier les mises à jour", "Geste recommandé",
-                "Pour cet incident, ouvrez Windows Update puis redémarrez si le problème continue.",
-                "Ouvrir Windows Update ?", requiresAdmin: false, store: true);
+            return Build(AutoFixKind.OpenWindowsUpdate,
+                Loc.T("AutoFix.Update.Title"), Loc.T("AutoFix.Update.TitleRecommended"),
+                Loc.T("AutoFix.Update.ExplanationFallback"), Loc.T("AutoFix.Update.Confirm"),
+                requiresAdmin: false, store: true);
         }
 
-        return None(
-            "Correction manuelle",
-            "Pour cet incident, suivez le conseil « Que faire ». Aucune action automatique sûre n'est disponible.");
+        return None(Loc.T("AutoFix.Manual.Title"), Loc.T("AutoFix.Manual.Explanation"));
     }
 
     public async Task<CommandResult> ExecuteAsync(AutoFixKind kind)
@@ -162,13 +199,27 @@ public sealed class AutoFixService
             AutoFixKind.OpenNetworkSettings => await SystemMaintenanceHelper.OpenUriAsync("ms-settings:network"),
             AutoFixKind.OpenStorageSettings => await SystemMaintenanceHelper.OpenUriAsync("ms-settings:storagesense"),
             AutoFixKind.OpenWindowsUpdate => await SystemMaintenanceHelper.OpenUriAsync("ms-settings:windowsupdate"),
+            AutoFixKind.OpenReliabilityHistory => await SystemMaintenanceHelper.OpenReliabilityHistoryAsync(),
+            AutoFixKind.OpenDeviceManager => await SystemMaintenanceHelper.OpenDeviceManagerAsync(),
             _ => new CommandResult
             {
                 Success = false,
                 ExitCode = -1,
-                Error = "Aucune action automatique pour cet incident."
+                Error = Loc.T("AutoFix.Execute.None")
             }
         };
+    }
+
+    private static bool IsBugcheckLike(EventItem item, string haystack)
+    {
+        if (item.EventId is 1001 or 41 or 6008)
+        {
+            return true;
+        }
+
+        return ContainsAny(haystack,
+            "bugcheck", "bsod", "blue screen", "écran bleu", "ecran bleu",
+            "systemerrorreporting", "unexpected shutdown", "arrêt critique", "arret critique");
     }
 
     private static AutoFixRecommendation Build(
@@ -198,7 +249,7 @@ public sealed class AutoFixService
         => new()
         {
             Kind = AutoFixKind.None,
-            ButtonLabel = "Pas d'auto-correction",
+            ButtonLabel = Loc.T("AutoFix.Button.None"),
             Title = title,
             Explanation = explanation,
             ConfirmMessage = string.Empty,

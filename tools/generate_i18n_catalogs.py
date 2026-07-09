@@ -1,0 +1,1183 @@
+# -*- coding: utf-8 -*-
+"""Generate FR/EN/IT localization catalogs for EventViewer.Core."""
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1] / "EventViewer.Core" / "Localization"
+ROOT.mkdir(parents=True, exist_ok=True)
+
+# Each value is (fr, en, it)
+UI = {
+    "App.Title": ("WinBeacon", "WinBeacon", "WinBeacon"),
+    "App.Description": (
+        "Comprenez les erreurs Windows en langage clair",
+        "Understand Windows errors in plain language",
+        "Comprendi gli errori di Windows in linguaggio semplice",
+    ),
+    "Lang.System": ("Système", "System", "Sistema"),
+    "Lang.Label": ("Langue", "Language", "Lingua"),
+    "Theme.Label": ("Thème", "Theme", "Tema"),
+    "Theme.Dark": ("Sombre", "Dark", "Scuro"),
+    "Theme.Light": ("Clair", "Light", "Chiaro"),
+    "Theme.Midnight": ("Minuit", "Midnight", "Mezzanotte"),
+    "Theme.Forest": ("Forêt", "Forest", "Foresta"),
+    "Theme.Applied": ("Thème appliqué : {0}", "Theme applied: {0}", "Tema applicato: {0}"),
+    "Theme.Hint": (
+        "Le thème s'applique immédiatement à toute l'interface.",
+        "The theme applies immediately to the whole interface.",
+        "Il tema si applica subito a tutta l'interfaccia.",
+    ),
+    "Lang.RestartHint": (
+        "La langue s'applique immédiatement. Actualisez la liste si besoin.",
+        "Language applies immediately. Refresh the list if needed.",
+        "La lingua si applica subito. Aggiorna l'elenco se necessario.",
+    ),
+    "Level.Error": ("Erreur", "Error", "Errore"),
+    "Level.Warning": ("Avertissement", "Warning", "Avviso"),
+    "Level.Information": ("Information", "Information", "Informazione"),
+    "Health.Banner": ("État de votre PC", "Your PC status", "Stato del PC"),
+    "Health.Ok": ("Tout va bien", "All good", "Tutto a posto"),
+    "Health.Watch": ("Quelques points à vérifier", "A few items to check", "Alcuni punti da verificare"),
+    "Health.Attention": ("Attention", "Attention", "Attenzione"),
+    "Health.Action": ("Action recommandée", "Action recommended", "Azione consigliata"),
+    "Health.Errors": ("erreurs", "errors", "errori"),
+    "Health.Warnings": ("avertissements", "warnings", "avvisi"),
+    "Health.SubtitleOk": ("Aucun problème récent détecté", "No recent issues detected", "Nessun problema recente rilevato"),
+    "Health.SubtitleStats": (
+        "{0} erreur(s) · {1} avertissement(s) · risque {2}/100",
+        "{0} error(s) · {1} warning(s) · risk {2}/100",
+        "{0} errore/i · {1} avviso/i · rischio {2}/100",
+    ),
+    "Timeline.Title": ("Activité des dernières 24 h", "Activity over the last 24 h", "Attività delle ultime 24 ore"),
+    "Log.Header": ("Journal", "Log", "Registro"),
+    "Log.System": ("Système", "System", "Sistema"),
+    "Log.Application": ("Applications", "Applications", "Applicazioni"),
+    "Log.Security": ("Sécurité", "Security", "Sicurezza"),
+    "Search.Header": ("Recherche", "Search", "Ricerca"),
+    "Search.Placeholder": ("Disque, réseau, mémoire…", "Disk, network, memory…", "Disco, rete, memoria…"),
+    "Action.Refresh": ("Actualiser", "Refresh", "Aggiorna"),
+    "Action.ExportCsv": ("Exporter CSV", "Export CSV", "Esporta CSV"),
+    "Action.ExportJson": ("Exporter JSON", "Export JSON", "Esporta JSON"),
+    "Action.OpenFolder": ("Ouvrir le dossier", "Open folder", "Apri cartella"),
+    "Snapshot.Title": ("Comparer dans le temps", "Compare over time", "Confronta nel tempo"),
+    "Snapshot.None": ("Aucun point de comparaison", "No comparison point", "Nessun punto di confronto"),
+    "Snapshot.Of": ("Snapshot du {0}", "Snapshot from {0}", "Snapshot del {0}"),
+    "Snapshot.Save": ("Enregistrer un point", "Save a checkpoint", "Salva un punto"),
+    "Snapshot.New": ("Voir les nouveautés", "Show what's new", "Mostra novità"),
+    "Snapshot.ShowAll": ("Tout afficher", "Show all", "Mostra tutto"),
+    "Options.Title": ("Options", "Options", "Opzioni"),
+    "Menu.File": ("Fichier", "File", "File"),
+    "Menu.Tools": ("Outils", "Tools", "Strumenti"),
+    "Menu.Help": ("Aide", "Help", "Aiuto"),
+    "Menu.Options": ("Options…", "Options…", "Opzioni…"),
+    "Menu.SeparatorHint": ("—", "—", "—"),
+    "Dialog.Close": ("Fermer", "Close", "Chiudi"),
+    "Dialog.Ok": ("OK", "OK", "OK"),
+    "Options.Telemetry": ("Télémétrie locale (opt-in)", "Local telemetry (opt-in)", "Telemetria locale (opt-in)"),
+    "Options.AiBeta": ("IA bêta", "AI beta", "IA beta"),
+    "Options.AiConsent": (
+        "Autoriser l'envoi cloud (détails d'incident)",
+        "Allow cloud sending (incident details)",
+        "Consenti invio cloud (dettagli incidente)",
+    ),
+    "Options.On": ("Activée", "On", "Attiva"),
+    "Options.Off": ("Désactivée", "Off", "Disattiva"),
+    "Options.Allowed": ("Autorisé", "Allowed", "Consentito"),
+    "Options.Denied": ("Refusé", "Denied", "Negato"),
+    "Options.AiEndpoint": ("Endpoint IA (HTTPS uniquement)", "AI endpoint (HTTPS only)", "Endpoint IA (solo HTTPS)"),
+    "Options.AiModel": ("Modèle IA", "AI model", "Modello IA"),
+    "Options.AiKeyHint": (
+        "Clé API : variable EVENTVIEWER_AI_API_KEY (recommandé). Sinon stockée chiffrée (DPAPI).",
+        "API key: EVENTVIEWER_AI_API_KEY environment variable (recommended). Otherwise stored encrypted (DPAPI).",
+        "Chiave API: variabile EVENTVIEWER_AI_API_KEY (consigliata). Altrimenti salvata crittografata (DPAPI).",
+    ),
+    "Maintenance.Title": ("Maintenance", "Maintenance", "Manutenzione"),
+    "Maintenance.Hint": (
+        "Actions utiles si vous avez un souci précis. Admin + confirmation requis.",
+        "Useful actions for a specific issue. Admin + confirmation required.",
+        "Azioni utili per un problema specifico. Admin + conferma richiesti.",
+    ),
+    "Maintenance.FlushDns": ("Vider le DNS", "Flush DNS", "Svuota DNS"),
+    "Maintenance.Sfc": ("Réparer fichiers (SFC)", "Repair files (SFC)", "Ripara file (SFC)"),
+    "Maintenance.ResetNetwork": ("Reset réseau", "Reset network", "Reset rete"),
+    "Admin.Title": ("Droits administrateur recommandés", "Administrator rights recommended", "Diritti amministratore consigliati"),
+    "Admin.Message": (
+        "Pour lire tous les journaux Windows et lancer la maintenance, lancez l'application en tant qu'administrateur.",
+        "To read all Windows logs and run maintenance, launch the app as administrator.",
+        "Per leggere tutti i log di Windows e avviare la manutenzione, esegui l'app come amministratore.",
+    ),
+    "Detail.Understand": ("Comprendre", "Understand", "Capire"),
+    "Detail.WhatToDo": ("Que faire", "What to do", "Cosa fare"),
+    "Detail.OneClick": ("Correction en 1 clic", "One-click fix", "Correzione in 1 clic"),
+    "Detail.FeedbackAsk": ("Cette recommandation vous aide ?", "Is this recommendation helpful?", "Questo consiglio ti è utile?"),
+    "Detail.Useful": ("Utile", "Useful", "Utile"),
+    "Detail.NotUseful": ("Pas utile", "Not useful", "Non utile"),
+    "Detail.InBrief": ("En bref", "In brief", "In breve"),
+    "Detail.Meaning": ("Ce que ça signifie", "What it means", "Cosa significa"),
+    "Detail.Component": ("Application / composant", "Application / component", "Applicazione / componente"),
+    "Detail.Summarize": ("Résumer cet incident", "Summarize this incident", "Riassumi questo incidente"),
+    "Detail.ShowTechnical": ("Afficher le détail technique", "Show technical details", "Mostra dettagli tecnici"),
+    "Detail.SelectTitle": ("Sélectionnez un incident", "Select an incident", "Seleziona un incidente"),
+    "Detail.SelectMeaning": (
+        "Choisissez une ligne à gauche pour lire une explication simple.",
+        "Choose a row on the left to read a simple explanation.",
+        "Scegli una riga a sinistra per leggere una spiegazione semplice.",
+    ),
+    "Detail.SelectAction": ("Rien à faire pour le moment.", "Nothing to do for now.", "Niente da fare per ora."),
+    "Badge.New": ("Nouveau", "New", "Nuovo"),
+    "Severity.Critical": ("Critique", "Critical", "Critico"),
+    "Severity.Watch": ("À surveiller", "Watch", "Da monitorare"),
+    "Severity.Info": ("Info", "Info", "Info"),
+    "Tag.Hardware": ("MATÉRIEL", "HARDWARE", "HARDWARE"),
+    "Tag.Network": ("RÉSEAU", "NETWORK", "RETE"),
+    "Tag.Memory": ("MÉMOIRE", "MEMORY", "MEMORIA"),
+    "Tag.Service": ("SERVICE", "SERVICE", "SERVIZIO"),
+    "Tag.Security": ("SÉCURITÉ", "SECURITY", "SICUREZZA"),
+    "Tag.Hardware.Advice": (
+        "Problème matériel possible. Vérifiez l'état du disque, sauvegardez vos données importantes, puis exécutez une vérification du disque si besoin.",
+        "Possible hardware issue. Check disk health, back up important data, then run a disk check if needed.",
+        "Possibile problema hardware. Controlla lo stato del disco, esegui un backup e poi una verifica del disco se serve.",
+    ),
+    "Tag.Network.Advice": (
+        "Problème réseau possible. Vérifiez votre connexion, redémarrez la box si besoin, puis testez un autre serveur DNS.",
+        "Possible network issue. Check your connection, restart the router if needed, then try another DNS server.",
+        "Possibile problema di rete. Controlla la connessione, riavvia il router se serve, poi prova un altro DNS.",
+    ),
+    "Tag.Memory.Advice": (
+        "Problème de mémoire possible. Fermez les applications inutilisées et redémarrez l'ordinateur si nécessaire.",
+        "Possible memory issue. Close unused apps and restart the computer if needed.",
+        "Possibile problema di memoria. Chiudi le app inutilizzate e riavvia il PC se necessario.",
+    ),
+    "Tag.Service.Advice": (
+        "Un service Windows a rencontré un problème. Un redémarrage peut aider ; sinon consultez les détails de l'événement.",
+        "A Windows service had a problem. A restart may help; otherwise check the event details.",
+        "Un servizio Windows ha avuto un problema. Un riavvio può aiutare; altrimenti consulta i dettagli.",
+    ),
+    "Tag.Security.Advice": (
+        "Alerte liée à la sécurité. Lancez une analyse Windows Defender et vérifiez les connexions récentes si besoin.",
+        "Security-related alert. Run a Windows Defender scan and check recent sign-ins if needed.",
+        "Avviso di sicurezza. Esegui un'analisi di Windows Defender e controlla gli accessi recenti se serve.",
+    ),
+    "Time.Unknown": ("date inconnue", "unknown date", "data sconosciuta"),
+    "Time.JustNow": ("à l'instant", "just now", "poco fa"),
+    "Time.Minute": ("il y a 1 min", "1 min ago", "1 min fa"),
+    "Time.Minutes": ("il y a {0} min", "{0} min ago", "{0} min fa"),
+    "Time.Hour": ("il y a 1 h", "1 h ago", "1 h fa"),
+    "Time.Hours": ("il y a {0} h", "{0} h ago", "{0} h fa"),
+    "Time.Yesterday": ("hier", "yesterday", "ieri"),
+    "Time.Days": ("il y a {0} jours", "{0} days ago", "{0} giorni fa"),
+    "Empty.NoIncidents.Title": ("Aucun incident récent", "No recent incidents", "Nessun incidente recente"),
+    "Empty.NoIncidents.Message": (
+        "C'est une bonne nouvelle : aucune erreur ni avertissement dans ce journal.",
+        "Good news: no errors or warnings in this log.",
+        "Buona notizia: nessun errore o avviso in questo registro.",
+    ),
+    "Empty.NoResults.Title": ("Aucun résultat", "No results", "Nessun risultato"),
+    "Empty.NoResults.Message": (
+        "Essayez un autre mot-clé (ex. disque, réseau, mémoire).",
+        "Try another keyword (e.g. disk, network, memory).",
+        "Prova un'altra parola chiave (es. disco, rete, memoria).",
+    ),
+    "Empty.NoNew.Title": ("Aucun nouvel incident", "No new incidents", "Nessun nuovo incidente"),
+    "Empty.NoNew.Message": (
+        "Rien de nouveau depuis votre dernier point de comparaison.",
+        "Nothing new since your last comparison point.",
+        "Niente di nuovo dall'ultimo punto di confronto.",
+    ),
+    "Status.Ready": ("Prêt", "Ready", "Pronto"),
+    "Status.Loading": ("Chargement…", "Loading…", "Caricamento…"),
+    "About.Title": ("À propos", "About", "Informazioni"),
+    "About.Close": ("Fermer", "Close", "Chiudi"),
+    "About.Creator": (
+        "Créée par Marco Barbaro",
+        "Created by Marco Barbaro",
+        "Creata da Marco Barbaro",
+    ),
+    "About.Copyright": (
+        "© {0} Marco Barbaro. Tous droits réservés.",
+        "© {0} Marco Barbaro. All rights reserved.",
+        "© {0} Marco Barbaro. Tutti i diritti riservati.",
+    ),
+    "Confirm.Cancel": ("Annuler", "Cancel", "Annulla"),
+    "Confirm.Primary.Fix": ("Corriger maintenant", "Fix now", "Correggi ora"),
+    "Confirm.Maintenance.FlushDns.Title": ("Vider le cache DNS", "Flush DNS cache", "Svuota cache DNS"),
+    "Confirm.Maintenance.FlushDns.Message": (
+        "Action rapide et sans danger pour vider le cache DNS de Windows. Continuer ?",
+        "Quick and safe action to flush the Windows DNS cache. Continue?",
+        "Azione rapida e sicura per svuotare la cache DNS di Windows. Continuare?",
+    ),
+    "Confirm.Maintenance.FlushDns.Primary": ("Vider le DNS", "Flush DNS", "Svuota DNS"),
+    "Confirm.Maintenance.Sfc.Title": (
+        "Réparer les fichiers système (SFC)",
+        "Repair system files (SFC)",
+        "Ripara file di sistema (SFC)",
+    ),
+    "Confirm.Maintenance.Sfc.Message": (
+        "Lance sfc /scannow. Cela peut prendre plusieurs minutes et nécessite les droits admin. Continuer ?",
+        "Runs sfc /scannow. This can take several minutes and requires admin rights. Continue?",
+        "Esegue sfc /scannow. Può richiedere diversi minuti e i diritti admin. Continuare?",
+    ),
+    "Confirm.Maintenance.Sfc.Primary": ("Lancer SFC", "Run SFC", "Avvia SFC"),
+    "Confirm.Maintenance.ResetNetwork.Title": ("Réinitialiser le réseau", "Reset network", "Reimposta rete"),
+    "Confirm.Maintenance.ResetNetwork.Message": (
+        "Remet la pile réseau Windows à zéro (Winsock + TCP/IP). Internet peut être coupé brièvement et un redémarrage peut être demandé. Continuer ?",
+        "Resets the Windows network stack (Winsock + TCP/IP). Internet may drop briefly and a reboot may be required. Continue?",
+        "Azzera lo stack di rete Windows (Winsock + TCP/IP). Internet può interrompersi brevemente e potrebbe servire un riavvio. Continuare?",
+    ),
+    "Confirm.Maintenance.ResetNetwork.Primary": ("Réinitialiser", "Reset", "Reimposta"),
+    "About.StoreEdition": (
+        "Édition Store (maintenance avancée masquée).",
+        "Store edition (advanced maintenance hidden).",
+        "Edizione Store (manutenzione avanzata nascosta).",
+    ),
+    "About.DesktopEdition": (
+        "Édition USB / bureau (maintenance disponible si admin).",
+        "USB / desktop edition (maintenance available if admin).",
+        "Edizione USB / desktop (manutenzione disponibile se admin).",
+    ),
+    "Action.InProgress": ("{0} en cours…", "{0} in progress…", "{0} in corso…"),
+    "Action.InProgressLong": (
+        "{0} en cours… Cela peut prendre plusieurs minutes.",
+        "{0} in progress… This may take several minutes.",
+        "{0} in corso… Può richiedere diversi minuti.",
+    ),
+    "Action.SfcConsoleHint": (
+        "Une fenêtre Invite de commandes s'ouvre pour afficher la progression SFC. Ne la fermez pas.",
+        "A Command Prompt window opens to show SFC progress. Do not close it.",
+        "Si apre una finestra Prompt dei comandi per mostrare l'avanzamento SFC. Non chiuderla.",
+    ),
+    "Action.MaintenanceBusyTitle": (
+        "Action en cours",
+        "Action in progress",
+        "Azione in corso",
+    ),
+    "Action.Failed": ("{0} a échoué : {1}", "{0} failed: {1}", "{0} non riuscito: {1}"),
+    "Action.RebootMayBeRequired": (
+        " Un redémarrage peut être nécessaire.",
+        " A restart may be required.",
+        " Potrebbe essere necessario un riavvio.",
+    ),
+    "Status.TelemetryOn": ("Télémétrie locale activée", "Local telemetry enabled", "Telemetria locale attivata"),
+    "Status.TelemetryOff": ("Télémétrie locale désactivée", "Local telemetry disabled", "Telemetria locale disattivata"),
+    "Status.AiBetaOn": ("IA bêta activée", "AI beta enabled", "IA beta attivata"),
+    "Status.AiBetaOff": ("IA bêta désactivée", "AI beta disabled", "IA beta disattivata"),
+    "Status.CloudConsentOn": (
+        "Consentement cloud : les détails d'incident pourront être envoyés à l'endpoint HTTPS configuré.",
+        "Cloud consent: incident details may be sent to the configured HTTPS endpoint.",
+        "Consenso cloud: i dettagli dell'incidente potranno essere inviati all'endpoint HTTPS configurato.",
+    ),
+    "Status.CloudConsentOff": (
+        "Consentement cloud refusé — l'assistant reste local.",
+        "Cloud consent denied — the assistant stays local.",
+        "Consenso cloud rifiutato — l'assistente resta locale.",
+    ),
+    "Status.AiEndpointRejected": ("Endpoint IA refusé : {0}", "AI endpoint rejected: {0}", "Endpoint IA rifiutato: {0}"),
+    "Status.SettingsSaveFailed": (
+        "Impossible d'enregistrer les options : {0}",
+        "Could not save options: {0}",
+        "Impossibile salvare le opzioni: {0}",
+    ),
+    "Status.LoadingIncidents": ("Chargement des incidents…", "Loading incidents…", "Caricamento incidenti…"),
+    "Status.UpdatedCount": ("Mis à jour · {0} incident(s)", "Updated · {0} incident(s)", "Aggiornato · {0} incidente/i"),
+    "Status.LimitedWithoutAdmin": (
+        "Certaines données peuvent être limitées sans droits administrateur",
+        "Some data may be limited without administrator rights",
+        "Alcuni dati possono essere limitati senza diritti amministratore",
+    ),
+    "Status.LoadCancelled": ("Chargement annulé", "Loading cancelled", "Caricamento annullato"),
+    "Status.ReadError": ("Erreur de lecture", "Read error", "Errore di lettura"),
+    "Empty.LoadFailed.Title": ("Impossible de lire les journaux", "Unable to read logs", "Impossibile leggere i registri"),
+    "Empty.LoadFailed.Message": ("Une erreur s'est produite : {0}", "An error occurred: {0}", "Si è verificato un errore: {0}"),
+    "Empty.LoadFailed.AdminRequired": (
+        "Lancez l'application en administrateur pour lire les journaux Windows.",
+        "Run the app as administrator to read Windows logs.",
+        "Esegui l'app come amministratore per leggere i log di Windows.",
+    ),
+    "Health.ReadFailed": ("Lecture impossible", "Unable to read", "Lettura impossibile"),
+    "Export.NoData": (
+        "Aucun incident à exporter. Actualisez d'abord.",
+        "No incidents to export. Refresh first.",
+        "Nessun incidente da esportare. Aggiorna prima.",
+    ),
+    "Export.CsvDone": ("Export CSV terminé", "CSV export complete", "Esportazione CSV completata"),
+    "Export.CsvPath": ("Export CSV : {0}", "CSV export: {0}", "Esportazione CSV: {0}"),
+    "Export.CsvFailed": ("Échec de l'export CSV : {0}", "CSV export failed: {0}", "Esportazione CSV non riuscita: {0}"),
+    "Export.JsonDone": ("Export JSON terminé", "JSON export complete", "Esportazione JSON completata"),
+    "Export.JsonPath": ("Rapport JSON : {0}", "JSON report: {0}", "Report JSON: {0}"),
+    "Export.JsonFailed": ("Échec de l'export JSON : {0}", "JSON export failed: {0}", "Esportazione JSON non riuscita: {0}"),
+    "Export.FolderNotAllowed": ("Dossier d'export non autorisé.", "Export folder not allowed.", "Cartella di esportazione non consentita."),
+    "Export.FolderInaccessible": ("Dossier d'export inaccessible.", "Export folder inaccessible.", "Cartella di esportazione non accessibile."),
+    "Export.OpenFolderFailed": (
+        "Impossible d'ouvrir le dossier : {0}",
+        "Could not open folder: {0}",
+        "Impossibile aprire la cartella: {0}",
+    ),
+    "Export.OpenFolder": ("Ouvrir le dossier d'export", "Open export folder", "Apri cartella di esportazione"),
+    "Snapshot.Saved": ("Point de comparaison enregistré", "Comparison point saved", "Punto di confronto salvato"),
+    "Snapshot.SaveFailed": (
+        "Impossible d'enregistrer le snapshot : {0}",
+        "Could not save snapshot: {0}",
+        "Impossibile salvare lo snapshot: {0}",
+    ),
+    "Snapshot.NoneToCompare": (
+        "Aucun point de comparaison. Enregistrez-en un d'abord.",
+        "No comparison point. Save one first.",
+        "Nessun punto di confronto. Salvanne uno prima.",
+    ),
+    "Snapshot.NewSinceDate": (
+        "{0} nouveau(x) depuis le {1}",
+        "{0} new since {1}",
+        "{0} nuov(i) dal {1}",
+    ),
+    "Snapshot.NewSinceSnapshot": (
+        "{0} nouveau(x) depuis le snapshot",
+        "{0} new since snapshot",
+        "{0} nuov(i) dallo snapshot",
+    ),
+    "Snapshot.ComparisonCleared": ("Comparaison désactivée", "Comparison cleared", "Confronto disattivato"),
+    "Status.SelectIncidentFirst": (
+        "Sélectionnez un incident d'abord",
+        "Select an incident first",
+        "Seleziona prima un incidente",
+    ),
+    "Status.PreparingSummary": ("Préparation du résumé…", "Preparing summary…", "Preparazione riepilogo…"),
+    "Status.SummaryCloudReady": ("Résumé cloud prêt", "Cloud summary ready", "Riepilogo cloud pronto"),
+    "Status.SummaryBetaReady": ("Résumé IA bêta (local) prêt", "AI beta (local) summary ready", "Riepilogo IA beta (locale) pronto"),
+    "Status.SummaryLocalReady": ("Résumé local prêt", "Local summary ready", "Riepilogo locale pronto"),
+    "Feedback.Useful": ("Merci — marqué comme utile.", "Thanks — marked as useful.", "Grazie — segnato come utile."),
+    "Feedback.NotUseful": (
+        "Merci — on notera que ce n'était pas utile.",
+        "Thanks — we'll note this wasn't useful.",
+        "Grazie — annoteremo che non era utile.",
+    ),
+    "Feedback.SaveFailed": (
+        "Impossible d'enregistrer le feedback : {0}",
+        "Could not save feedback: {0}",
+        "Impossibile salvare il feedback: {0}",
+    ),
+    "Maintenance.Label.FlushDns": ("Vidage du cache DNS", "Flushing DNS cache", "Svuotamento cache DNS"),
+    "Maintenance.Label.ResetNetwork": ("Réinitialisation réseau", "Network reset", "Reimpostazione rete"),
+    "Maintenance.Label.Sfc": (
+        "Vérification des fichiers système (SFC)",
+        "System file check (SFC)",
+        "Verifica file di sistema (SFC)",
+    ),
+    "Maintenance.AdminRequired": (
+        "Les actions de maintenance nécessitent les droits administrateur.",
+        "Maintenance actions require administrator rights.",
+        "Le azioni di manutenzione richiedono i diritti amministratore.",
+    ),
+    "Options.ToolsStatus": ("Télémétrie {0} · IA bêta {1}", "Telemetry {0} · AI beta {1}", "Telemetria {0} · IA beta {1}"),
+    "Cloud.Status.Disabled": (
+        "Cloud IA : désactivé (IA bêta off)",
+        "AI cloud: disabled (AI beta off)",
+        "Cloud IA: disattivato (IA beta off)",
+    ),
+    "Cloud.Status.ConsentRequired": (
+        "Cloud IA : consentement requis avant envoi",
+        "AI cloud: consent required before sending",
+        "Cloud IA: consenso richiesto prima dell'invio",
+    ),
+    "Cloud.Status.Ready": (
+        "Cloud IA : prêt (HTTPS + clé + consentement)",
+        "AI cloud: ready (HTTPS + key + consent)",
+        "Cloud IA: pronto (HTTPS + chiave + consenso)",
+    ),
+    "Cloud.Status.EndpointRejected": (
+        "Cloud IA : endpoint refusé (HTTPS public uniquement)",
+        "AI cloud: endpoint rejected (public HTTPS only)",
+        "Cloud IA: endpoint rifiutato (solo HTTPS pubblico)",
+    ),
+    "Cloud.Status.NotConfigured": (
+        "Cloud IA : non configuré (local uniquement)",
+        "AI cloud: not configured (local only)",
+        "Cloud IA: non configurato (solo locale)",
+    ),
+    "Command.Success": ("{0} : terminé avec succès.", "{0}: completed successfully.", "{0}: completato con successo."),
+    "Command.Failed": ("{0} : échec.", "{0}: failed.", "{0}: non riuscito."),
+    "Command.FailedWithCode": ("{0} : échec (code {1}).", "{0}: failed (code {1}).", "{0}: non riuscito (codice {1})."),
+    "Command.OutputHeader": ("=== SORTIE ===", "=== OUTPUT ===", "=== OUTPUT ==="),
+    "Command.ErrorHeader": ("=== ERREURS ===", "=== ERRORS ===", "=== ERRORI ==="),
+    "Command.Exception": ("Exception lors de l'exécution: {0}", "Exception while running: {0}", "Eccezione durante l'esecuzione: {0}"),
+    "Command.UriNotAllowed": ("URI non autorisée.", "URI not allowed.", "URI non consentito."),
+    "Command.Opening": ("Ouverture : {0}", "Opening: {0}", "Apertura: {0}"),
+    "Command.OpenFailed": ("Impossible d'ouvrir {0}", "Could not open {0}", "Impossibile aprire {0}"),
+    "TechDetail.None": ("(Aucun détail technique)", "(No technical details)", "(Nessun dettaglio tecnico)"),
+    "TechDetail.Dcom.Title": ("Détail technique (DCOM 10016)", "Technical detail (DCOM 10016)", "Dettaglio tecnico (DCOM 10016)"),
+    "TechDetail.Dcom.MissingDll": (
+        "Windows n'a pas pu afficher le texte officiel de l'événement (DLL de message manquante).",
+        "Windows could not display the official event text (missing message DLL).",
+        "Windows non ha potuto mostrare il testo ufficiale dell'evento (DLL messaggio mancante).",
+    ),
+    "TechDetail.Dcom.ExtractedIntro": (
+        "Voici les informations utiles extraites de l'événement :",
+        "Useful information extracted from the event:",
+        "Informazioni utili estratte dall'evento:",
+    ),
+    "TechDetail.Label.Source": ("Source", "Source", "Origine"),
+    "TechDetail.Label.Code": ("Code", "Code", "Codice"),
+    "TechDetail.Label.PermissionType": ("Type de permission", "Permission type", "Tipo di autorizzazione"),
+    "TechDetail.Label.Scope": ("Portée", "Scope", "Ambito"),
+    "TechDetail.Label.Operation": ("Opération", "Operation", "Operazione"),
+    "TechDetail.Label.ComponentClsid": ("Composant (CLSID)", "Component (CLSID)", "Componente (CLSID)"),
+    "TechDetail.Label.ApplicationAppId": ("Application (AppID)", "Application (AppID)", "Applicazione (AppID)"),
+    "TechDetail.Label.Account": ("Compte / machine", "Account / machine", "Account / macchina"),
+    "TechDetail.Label.User": ("Utilisateur", "User", "Utente"),
+    "TechDetail.Label.Sid": ("SID", "SID", "SID"),
+    "TechDetail.Label.Address": ("Adresse", "Address", "Indirizzo"),
+    "TechDetail.Label.AppContainer": ("Conteneur d'application", "Application container", "Contenitore applicazione"),
+    "TechDetail.Label.ContainerSid": ("SID conteneur", "Container SID", "SID contenitore"),
+    "TechDetail.Dcom.BenignNote": (
+        "Note : ces alertes DCOM sont très souvent bénignes (composants Microsoft).",
+        "Note: these DCOM alerts are very often benign (Microsoft components).",
+        "Nota: questi avvisi DCOM sono molto spesso innocui (componenti Microsoft).",
+    ),
+    "TechDetail.RawMessage": ("Message brut :", "Raw message:", "Messaggio grezzo:"),
+    "TechDetail.Generic.Title": ("Détail technique", "Technical detail", "Dettaglio tecnico"),
+    "TechDetail.Generic.MissingDll": (
+        "Le texte officiel Windows est indisponible (DLL de message manquante).",
+        "The official Windows text is unavailable (missing message DLL).",
+        "Il testo ufficiale di Windows non è disponibile (DLL messaggio mancante).",
+    ),
+    "TechDetail.Generic.SourceCode": ("Source : {0} · Code : {1}", "Source: {0} · Code: {1}", "Origine: {0} · Codice: {1}"),
+    "TechDetail.Generic.EventData": ("Données de l'événement :", "Event data:", "Dati dell'evento:"),
+    "TechDetail.Permission.Application": (
+        "Propres à l'application (DCOM)",
+        "Application-specific (DCOM)",
+        "Specifiche dell'applicazione (DCOM)",
+    ),
+    "TechDetail.Access.Activation": ("Activation locale", "Local activation", "Attivazione locale"),
+    "TechDetail.Access.Launch": ("Lancement", "Launch", "Avvio"),
+    "TechDetail.Unavailable": ("Non disponible", "Unavailable", "Non disponibile"),
+    # Auto-fix recommendations
+    "AutoFix.Button.None": ("Pas d'auto-correction", "No auto-fix", "Nessuna correzione automatica"),
+    "AutoFix.Execute.None": (
+        "Aucune action automatique pour cet incident.",
+        "No automatic action for this incident.",
+        "Nessuna azione automatica per questo incidente.",
+    ),
+    "AutoFix.None.SelectTitle": ("Sélectionnez un incident", "Select an incident", "Seleziona un incidente"),
+    "AutoFix.None.SelectExplanation": (
+        "Choisissez une ligne pour proposer une correction.",
+        "Choose a row to suggest a fix.",
+        "Scegli una riga per proporre una correzione.",
+    ),
+    "AutoFix.Dcom.Title": ("Généralement sans action", "Usually no action needed", "Di solito nessuna azione"),
+    "AutoFix.Dcom.Explanation": (
+        "Les alertes DCOM / permissions COM sont souvent bénignes. Pas de correction réseau automatique.",
+        "DCOM / COM permission alerts are often benign. No automatic network fix.",
+        "Gli avvisi DCOM / autorizzazioni COM sono spesso innocui. Nessuna correzione di rete automatica.",
+    ),
+    "AutoFix.Dns.Button": ("Corriger le DNS", "Fix DNS", "Correggi DNS"),
+    "AutoFix.Dns.Title": ("Vider le cache DNS", "Flush DNS cache", "Svuota cache DNS"),
+    "AutoFix.Dns.Explanation": (
+        "Souvent suffisant quand la navigation ou la résolution de noms plante.",
+        "Often enough when browsing or name resolution fails.",
+        "Spesso sufficiente quando la navigazione o la risoluzione nomi fallisce.",
+    ),
+    "AutoFix.Dns.Confirm": (
+        "On va vider le cache DNS de Windows. Action rapide et sans danger.",
+        "We'll flush the Windows DNS cache. Quick and safe.",
+        "Svuoteremo la cache DNS di Windows. Azione rapida e sicura.",
+    ),
+    "AutoFix.NetworkSettings.Button": ("Ouvrir Réglages réseau", "Open Network settings", "Apri Impostazioni rete"),
+    "AutoFix.NetworkSettings.Title": ("Vérifier le réseau", "Check the network", "Verifica la rete"),
+    "AutoFix.NetworkSettings.ExplanationStoreDns": (
+        "Ouvre les paramètres réseau Windows. Pour vider le DNS automatiquement, utilisez la version USB.",
+        "Opens Windows network settings. For automatic DNS flush, use the USB edition.",
+        "Apre le impostazioni di rete Windows. Per svuotare il DNS automaticamente, usa l'edizione USB.",
+    ),
+    "AutoFix.NetworkSettings.Confirm": ("Ouvrir les paramètres réseau ?", "Open network settings?", "Aprire le impostazioni di rete?"),
+    "AutoFix.ResetNetwork.Button": ("Réparer le réseau", "Repair network", "Ripara rete"),
+    "AutoFix.ResetNetwork.Title": ("Réinitialiser la pile réseau", "Reset network stack", "Reimposta stack di rete"),
+    "AutoFix.ResetNetwork.Explanation": (
+        "Remet Windows réseau à zéro (Winsock + TCP/IP). Un redémarrage peut être demandé ensuite.",
+        "Resets Windows networking (Winsock + TCP/IP). A restart may be required afterwards.",
+        "Azzera la rete Windows (Winsock + TCP/IP). Potrebbe servire un riavvio dopo.",
+    ),
+    "AutoFix.ResetNetwork.Confirm": (
+        "Réinitialiser le réseau maintenant ? Cela peut couper Internet brièvement. Un redémarrage peut être nécessaire.",
+        "Reset the network now? Internet may drop briefly. A restart may be required.",
+        "Reimpostare la rete ora? Internet può interrompersi brevemente. Potrebbe servire un riavvio.",
+    ),
+    "AutoFix.NetworkSettings.ExplanationStoreReset": (
+        "Ouvre les paramètres réseau. La réinitialisation complète est disponible en version USB.",
+        "Opens network settings. Full reset is available in the USB edition.",
+        "Apre le impostazioni di rete. Il reset completo è disponibile nell'edizione USB.",
+    ),
+    "AutoFix.NetworkDns.Button": ("Corriger le réseau (DNS)", "Fix network (DNS)", "Correggi rete (DNS)"),
+    "AutoFix.NetworkDns.Title": ("Premier geste réseau", "First network step", "Primo passo di rete"),
+    "AutoFix.NetworkDns.Explanation": (
+        "On commence par vider le cache DNS, la correction la plus sûre.",
+        "We start by flushing the DNS cache — the safest fix.",
+        "Iniziamo svuotando la cache DNS, la correzione più sicura.",
+    ),
+    "AutoFix.NetworkDns.Confirm": ("Vider le cache DNS maintenant ?", "Flush the DNS cache now?", "Svuotare la cache DNS ora?"),
+    "AutoFix.NetworkSettings.ExplanationFirst": (
+        "Ouvre les paramètres réseau pour vérifier connexion / Wi‑Fi / résolution.",
+        "Opens network settings to check connection / Wi‑Fi / resolution.",
+        "Apre le impostazioni di rete per verificare connessione / Wi‑Fi / risoluzione.",
+    ),
+    "AutoFix.DiskCleanup.Button": ("Libérer de l'espace", "Free up space", "Libera spazio"),
+    "AutoFix.DiskCleanup.Title": ("Nettoyage de disque", "Disk Cleanup", "Pulizia disco"),
+    "AutoFix.DiskCleanup.Explanation": (
+        "Ouvre l'outil Windows de nettoyage pour récupérer de l'espace.",
+        "Opens the Windows cleanup tool to reclaim space.",
+        "Apre lo strumento di pulizia Windows per recuperare spazio.",
+    ),
+    "AutoFix.DiskCleanup.Confirm": (
+        "Ouvrir le Nettoyage de disque Windows ?",
+        "Open Windows Disk Cleanup?",
+        "Aprire Pulizia disco di Windows?",
+    ),
+    "AutoFix.Storage.Button": ("Ouvrir Stockage", "Open Storage", "Apri Archiviazione"),
+    "AutoFix.Storage.Title": ("Vérifier l'espace disque", "Check disk space", "Verifica spazio disco"),
+    "AutoFix.Storage.Explanation": (
+        "Ouvre les paramètres Stockage Windows pour voir ce qui prend de la place.",
+        "Opens Windows Storage settings to see what uses space.",
+        "Apre le impostazioni Archiviazione Windows per vedere cosa occupa spazio.",
+    ),
+    "AutoFix.Storage.Confirm": ("Ouvrir les paramètres de stockage ?", "Open storage settings?", "Aprire le impostazioni di archiviazione?"),
+    "AutoFix.Defender.Button": ("Analyser avec Defender", "Scan with Defender", "Analizza con Defender"),
+    "AutoFix.Defender.Title": ("Analyse rapide Windows Defender", "Windows Defender quick scan", "Analisi rapida Windows Defender"),
+    "AutoFix.Defender.Explanation": (
+        "Lance une analyse rapide pour vérifier s'il reste une menace.",
+        "Runs a quick scan to check for remaining threats.",
+        "Esegue un'analisi rapida per verificare se resta una minaccia.",
+    ),
+    "AutoFix.Defender.Confirm": (
+        "Lancer une analyse rapide Windows Defender ?",
+        "Start a Windows Defender quick scan?",
+        "Avviare un'analisi rapida di Windows Defender?",
+    ),
+    "AutoFix.Update.Button": ("Ouvrir Windows Update", "Open Windows Update", "Apri Windows Update"),
+    "AutoFix.Update.TitleCheck": ("Vérifier les protections", "Check protections", "Verifica protezioni"),
+    "AutoFix.Update.ExplanationStoreSecurity": (
+        "Dans la version Store, ouvrez Windows Update / Sécurité Windows manuellement.",
+        "In the Store edition, open Windows Update / Windows Security manually.",
+        "Nell'edizione Store, apri Windows Update / Sicurezza Windows manualmente.",
+    ),
+    "AutoFix.Update.Confirm": ("Ouvrir Windows Update ?", "Open Windows Update?", "Aprire Windows Update?"),
+    "AutoFix.Update.Title": ("Vérifier les mises à jour", "Check for updates", "Controlla aggiornamenti"),
+    "AutoFix.Update.Explanation": (
+        "Ouvre Windows Update pour réessayer l'installation.",
+        "Opens Windows Update to retry installation.",
+        "Apre Windows Update per riprovare l'installazione.",
+    ),
+    "AutoFix.Bugcheck.Button": ("Voir l'historique de fiabilité", "View reliability history", "Vedi cronologia affidabilità"),
+    "AutoFix.Bugcheck.Title": ("Comprendre ce qui a planté", "Understand what crashed", "Capire cosa si è bloccato"),
+    "AutoFix.Bugcheck.Explanation": (
+        "Ouvre l'Historique de fiabilité Windows pour voir programmes et pilotes liés à l'écran bleu. Ensuite : mises à jour, pilotes fabricant, SFC.",
+        "Opens Windows Reliability History to see programs and drivers linked to the blue screen. Next: updates, OEM drivers, SFC.",
+        "Apre la Cronologia affidabilità Windows per vedere programmi e driver legati alla schermata blu. Poi: aggiornamenti, driver OEM, SFC.",
+    ),
+    "AutoFix.Bugcheck.Confirm": (
+        "Ouvrir l'Historique de fiabilité maintenant ?",
+        "Open Reliability History now?",
+        "Aprire ora la Cronologia affidabilità?",
+    ),
+    "AutoFix.Drivers.Button": ("Ouvrir Périphériques", "Open Devices", "Apri Dispositivi"),
+    "AutoFix.Drivers.Title": ("Vérifier les pilotes", "Check drivers", "Verifica driver"),
+    "AutoFix.Drivers.Explanation": (
+        "Ouvre le Gestionnaire de périphériques pour repérer un matériel en erreur, puis mettez le pilote à jour.",
+        "Opens Device Manager to spot faulty hardware, then update the driver.",
+        "Apre Gestione dispositivi per individuare hardware in errore, poi aggiorna il driver.",
+    ),
+    "AutoFix.Drivers.Confirm": (
+        "Ouvrir le Gestionnaire de périphériques ?",
+        "Open Device Manager?",
+        "Aprire Gestione dispositivi?",
+    ),
+    "AutoFix.Sfc.Button": ("Réparer Windows (SFC)", "Repair Windows (SFC)", "Ripara Windows (SFC)"),
+    "AutoFix.Sfc.Title": ("Vérification des fichiers système", "System file check", "Verifica file di sistema"),
+    "AutoFix.Sfc.Explanation": (
+        "SFC cherche et répare les fichiers Windows corrompus. Cela peut prendre 10 à 30 minutes.",
+        "SFC finds and repairs corrupted Windows files. This can take 10 to 30 minutes.",
+        "SFC cerca e ripara i file Windows danneggiati. Può richiedere da 10 a 30 minuti.",
+    ),
+    "AutoFix.Sfc.Confirm": (
+        "Lancer SFC /scannow ? Laissez l'ordinateur allumé, cela peut prendre longtemps.",
+        "Run SFC /scannow? Leave the PC on — this can take a while.",
+        "Avviare SFC /scannow? Lascia il PC acceso: può richiedere tempo.",
+    ),
+    "AutoFix.Update.TitleRecommended": ("Geste recommandé", "Recommended step", "Passo consigliato"),
+    "AutoFix.Update.ExplanationStoreSfc": (
+        "La réparation SFC n'est pas disponible dans le Store. Mettez Windows à jour, puis redémarrez.",
+        "SFC repair is not available in the Store. Update Windows, then restart.",
+        "La riparazione SFC non è disponibile nello Store. Aggiorna Windows, poi riavvia.",
+    ),
+    "AutoFix.Memory.Title": (
+        "Fermez des applications puis redémarrez",
+        "Close apps then restart",
+        "Chiudi le app poi riavvia",
+    ),
+    "AutoFix.Memory.Explanation": (
+        "Pour la mémoire, le geste le plus sûr est de fermer les apps lourdes puis redémarrer le PC.",
+        "For memory issues, the safest step is to close heavy apps then restart the PC.",
+        "Per la memoria, il passo più sicuro è chiudere le app pesanti e poi riavviare il PC.",
+    ),
+    "AutoFix.Update.ExplanationFallback": (
+        "Pour cet incident, ouvrez Windows Update puis redémarrez si le problème continue.",
+        "For this incident, open Windows Update then restart if the issue continues.",
+        "Per questo incidente, apri Windows Update poi riavvia se il problema continua.",
+    ),
+    "AutoFix.Manual.Title": ("Correction manuelle", "Manual fix", "Correzione manuale"),
+    "AutoFix.Manual.Explanation": (
+        "Pour cet incident, suivez le conseil « Que faire ». Aucune action automatique sûre n'est disponible.",
+        "For this incident, follow the “What to do” advice. No safe automatic action is available.",
+        "Per questo incidente, segui il consiglio « Cosa fare ». Nessuna azione automatica sicura è disponibile.",
+    ),
+    "Ai.LocalMode": ("Mode local", "Local mode", "Modalità locale"),
+    "Ai.BetaLocal": (
+        "Mode IA bêta (explication locale — cloud non utilisé pour cette réponse)",
+        "AI beta mode (local explanation — cloud not used for this reply)",
+        "Modalità IA beta (spiegazione locale — cloud non usato per questa risposta)",
+    ),
+    "Ai.InBrief": ("En bref", "In brief", "In breve"),
+    "Ai.Meaning": ("Ce que ça signifie", "What it means", "Cosa significa"),
+    "Ai.WhatToDo": ("Que faire", "What to do", "Cosa fare"),
+    "Ai.Detail": ("Détail", "Detail", "Dettaglio"),
+    "Ai.CloudMode": ("Mode IA cloud", "AI cloud mode", "Modalità IA cloud"),
+    "Ai.NoSelection": ("Aucun incident sélectionné.", "No incident selected.", "Nessun incidente selezionato."),
+    "Ai.PromptLang": ("français simple", "plain English", "italiano semplice"),
+    "Event.Unknown.Title": ("Événement Windows {0}", "Windows event {0}", "Evento Windows {0}"),
+    "Event.Unknown.Description": (
+        "Événement système non répertorié dans la base de connaissances. Source : {0}",
+        "System event not listed in the knowledge base. Source: {0}",
+        "Evento di sistema non presente nella knowledge base. Origine: {0}",
+    ),
+    "Event.Unknown.Solution": (
+        "Recherchez cet ID d'événement dans la documentation Microsoft ou utilisez le résumé IA pour plus de détails.",
+        "Look up this event ID in Microsoft documentation or use the AI summary for more details.",
+        "Cerca questo ID evento nella documentazione Microsoft o usa il riepilogo IA per maggiori dettagli.",
+    ),
+    "Event.Wer.Title": ("Rapport d'erreur Windows (WER)", "Windows Error Report (WER)", "Report errori Windows (WER)"),
+    "Event.Wer.Description": (
+        "Un rapport d'erreur a été généré suite à un plantage d'application.",
+        "An error report was generated after an application crash.",
+        "È stato generato un report errori dopo un crash dell'applicazione.",
+    ),
+    "Event.Wer.Solution": (
+        "1) Notez le nom de l'application dans le détail technique.\n2) Mettez l'application à jour ou réinstallez-la.\n3) Vérifiez Windows Update et les pilotes graphiques.\n4) Si cela se répète, désinstallez les ajouts récents.",
+        "1) Note the application name in the technical details.\n2) Update or reinstall the application.\n3) Check Windows Update and graphics drivers.\n4) If it repeats, uninstall recent add-ons.",
+        "1) Annota il nome dell'app nei dettagli tecnici.\n2) Aggiorna o reinstalla l'applicazione.\n3) Controlla Windows Update e i driver grafici.\n4) Se si ripete, disinstalla componenti recenti.",
+    ),
+    "Severity.CriticalLabel": ("Critique", "Critical", "Critico"),
+    "Severity.ErrorLabel": ("Erreur", "Error", "Errore"),
+    "Severity.WarningLabel": ("Avertissement", "Warning", "Avviso"),
+    "Severity.InfoLabel": ("Information", "Information", "Informazione"),
+    "Severity.UnknownLabel": ("Inconnu", "Unknown", "Sconosciuto"),
+    "Risk.Critical": ("Critique", "Critical", "Critico"),
+    "Risk.High": ("Élevée", "High", "Elevato"),
+    "Risk.Medium": ("Modérée", "Medium", "Moderato"),
+    "Risk.Low": ("Faible", "Low", "Basso"),
+}
+
+# Event catalog: id -> Title/Description/Solution/SeverityIndex (0=Critical,1=Error,2=Warning,3=Info)
+# Severity labels localized via Severity.*Label
+EVENTS: dict[int, dict] = {
+    41: {
+        "sev": 0,
+        "Title": ("Redémarrage inattendu du système", "Unexpected system restart", "Riavvio imprevisto del sistema"),
+        "Description": (
+            "Le système a redémarré sans s'arrêter proprement. Cela peut être causé par une coupure de courant, un plantage système ou une mise à jour forcée.",
+            "The system restarted without shutting down cleanly. This can be caused by a power cut, a system crash, or a forced update.",
+            "Il sistema si è riavviato senza spegnersi correttamente. Può essere causato da un blackout, un crash o un aggiornamento forzato.",
+        ),
+        "Solution": (
+            "Vérifiez l'alimentation électrique, les pilotes matériels et les mises à jour Windows récentes.",
+            "Check the power supply, hardware drivers, and recent Windows updates.",
+            "Controlla l'alimentazione, i driver hardware e gli aggiornamenti Windows recenti.",
+        ),
+    },
+    1074: {
+        "sev": 3,
+        "Title": ("Arrêt ou redémarrage système planifié", "Planned system shutdown or restart", "Arresto o riavvio di sistema pianificato"),
+        "Description": (
+            "Le système s'est arrêté ou a redémarré de manière planifiée (par un utilisateur, une application ou Windows Update).",
+            "The system shut down or restarted in a planned way (by a user, an app, or Windows Update).",
+            "Il sistema si è arrestato o riavviato in modo pianificato (utente, app o Windows Update).",
+        ),
+        "Solution": (
+            "Aucune action requise si cela était intentionnel.",
+            "No action needed if this was intentional.",
+            "Nessuna azione richiesta se era intenzionale.",
+        ),
+    },
+    6008: {
+        "sev": 0,
+        "Title": ("Arrêt inattendu du système", "Unexpected system shutdown", "Arresto imprevisto del sistema"),
+        "Description": (
+            "Le système s'est arrêté de manière imprévue lors du dernier démarrage.",
+            "The system shut down unexpectedly during the last boot.",
+            "Il sistema si è spento in modo imprevisto all'ultimo avvio.",
+        ),
+        "Solution": (
+            "Vérifiez les journaux pour identifier la cause (problème matériel, surchauffe, alimentation).",
+            "Check the logs to identify the cause (hardware, overheating, power).",
+            "Controlla i log per individuare la causa (hardware, surriscaldamento, alimentazione).",
+        ),
+    },
+    10016: {
+        "sev": 2,
+        "Title": ("Permissions DCOM insuffisantes", "Insufficient DCOM permissions", "Autorizzazioni DCOM insufficienti"),
+        "Description": (
+            "Une application tente d'accéder à un composant DCOM sans les permissions nécessaires. Le nom du composant et son identifiant (GUID) sont affichés quand Windows les fournit.",
+            "An application is trying to access a DCOM component without the required permissions. The component name and GUID are shown when Windows provides them.",
+            "Un'applicazione sta tentando di accedere a un componente DCOM senza le autorizzazioni necessarie. Nome e GUID vengono mostrati quando Windows li fornisce.",
+        ),
+        "Solution": (
+            "Généralement bénin (souvent un service Microsoft comme Windows Update Medic). Aucune action requise dans la plupart des cas.",
+            "Usually harmless (often a Microsoft service such as Windows Update Medic). No action needed in most cases.",
+            "Di solito innocuo (spesso un servizio Microsoft come Windows Update Medic). Nella maggior parte dei casi non serve alcuna azione.",
+        ),
+    },
+    7: {
+        "sev": 0,
+        "Title": ("Erreur de périphérique", "Device error", "Errore del dispositivo"),
+        "Description": (
+            "Un périphérique de stockage a signalé une erreur matérielle. Cela peut indiquer un disque dur défaillant.",
+            "A storage device reported a hardware error. This may indicate a failing drive.",
+            "Un dispositivo di archiviazione ha segnalato un errore hardware. Potrebbe indicare un disco difettoso.",
+        ),
+        "Solution": (
+            "Sauvegardez vos données immédiatement et vérifiez l'état du disque avec CrystalDiskInfo ou chkdsk.",
+            "Back up your data immediately and check the drive with CrystalDiskInfo or chkdsk.",
+            "Esegui subito un backup e controlla il disco con CrystalDiskInfo o chkdsk.",
+        ),
+    },
+    11: {
+        "sev": 0,
+        "Title": ("Erreur de contrôleur de disque", "Disk controller error", "Errore del controller disco"),
+        "Description": (
+            "Le contrôleur a détecté une erreur sur le disque dur.",
+            "The controller detected an error on the hard drive.",
+            "Il controller ha rilevato un errore sul disco.",
+        ),
+        "Solution": (
+            "Testez le disque avec les outils du fabricant. Remplacez-le si nécessaire.",
+            "Test the drive with the manufacturer tools. Replace it if needed.",
+            "Testa il disco con gli strumenti del produttore. Sostituiscilo se necessario.",
+        ),
+    },
+    51: {
+        "sev": 1,
+        "Title": ("Erreur de pagination", "Paging error", "Errore di paging"),
+        "Description": (
+            "Une erreur s'est produite lors de l'écriture de la page mémoire sur le disque.",
+            "An error occurred while writing a memory page to disk.",
+            "Si è verificato un errore durante la scrittura di una pagina di memoria su disco.",
+        ),
+        "Solution": (
+            "Vérifiez l'espace disque disponible et l'intégrité du fichier de pagination.",
+            "Check free disk space and the integrity of the page file.",
+            "Controlla lo spazio libero e l'integrità del file di paging.",
+        ),
+    },
+    153: {
+        "sev": 2,
+        "Title": ("Espace disque faible", "Low disk space", "Spazio su disco insufficiente"),
+        "Description": (
+            "Un volume de disque a peu d'espace disponible.",
+            "A disk volume is running low on free space.",
+            "Un volume ha poco spazio disponibile.",
+        ),
+        "Solution": (
+            "Libérez de l'espace en supprimant des fichiers inutiles ou en utilisant l'outil de nettoyage de disque.",
+            "Free up space by deleting unused files or using Disk Cleanup.",
+            "Libera spazio eliminando file inutili o usando Pulizia disco.",
+        ),
+    },
+    4201: {
+        "sev": 2,
+        "Title": ("Connexion réseau perdue", "Network connection lost", "Connessione di rete persa"),
+        "Description": (
+            "La connexion réseau a été interrompue de manière inattendue.",
+            "The network connection was interrupted unexpectedly.",
+            "La connessione di rete è stata interrotta in modo imprevisto.",
+        ),
+        "Solution": (
+            "Vérifiez les câbles réseau, le routeur et les paramètres de la carte réseau.",
+            "Check network cables, the router, and network adapter settings.",
+            "Controlla cavi, router e impostazioni della scheda di rete.",
+        ),
+    },
+    8003: {
+        "sev": 1,
+        "Title": ("Problème de résolution DNS", "DNS resolution problem", "Problema di risoluzione DNS"),
+        "Description": (
+            "Le résolveur DNS ne peut pas contacter les serveurs DNS.",
+            "The DNS resolver cannot contact DNS servers.",
+            "Il resolver DNS non riesce a contattare i server DNS.",
+        ),
+        "Solution": (
+            "Vérifiez la configuration DNS (8.8.8.8 pour Google DNS) et la connectivité Internet.",
+            "Check DNS settings (8.8.8.8 for Google DNS) and Internet connectivity.",
+            "Controlla la configurazione DNS (8.8.8.8 per Google DNS) e la connessione Internet.",
+        ),
+    },
+    4625: {
+        "sev": 2,
+        "Title": ("Échec d'ouverture de session", "Sign-in failure", "Accesso non riuscito"),
+        "Description": (
+            "Une tentative de connexion a échoué (mauvais mot de passe ou compte verrouillé).",
+            "A sign-in attempt failed (wrong password or locked account).",
+            "Un tentativo di accesso non è riuscito (password errata o account bloccato).",
+        ),
+        "Solution": (
+            "Vérifiez les identifiants. Si répété, cela peut indiquer une tentative d'intrusion.",
+            "Check the credentials. If repeated, it may indicate an intrusion attempt.",
+            "Verifica le credenziali. Se si ripete, potrebbe indicare un tentativo di intrusion.",
+        ),
+    },
+    4624: {
+        "sev": 3,
+        "Title": ("Ouverture de session réussie", "Successful sign-in", "Accesso riuscito"),
+        "Description": (
+            "Un utilisateur s'est connecté avec succès au système.",
+            "A user signed in successfully.",
+            "Un utente ha effettuato l'accesso correttamente.",
+        ),
+        "Solution": ("Aucune action requise.", "No action required.", "Nessuna azione richiesta."),
+    },
+    4648: {
+        "sev": 3,
+        "Title": ("Tentative de connexion avec identifiants explicites", "Sign-in with explicit credentials", "Accesso con credenziali esplicite"),
+        "Description": (
+            "Un utilisateur a tenté de se connecter en utilisant des identifiants différents.",
+            "A user tried to sign in using different credentials.",
+            "Un utente ha tentato di accedere con credenziali diverse.",
+        ),
+        "Solution": (
+            "Normal si vous utilisez 'Exécuter en tant qu'administrateur' ou des connexions réseau.",
+            "Normal if you use Run as administrator or network connections.",
+            "Normale se usi Esegui come amministratore o connessioni di rete.",
+        ),
+    },
+    19: {
+        "sev": 1,
+        "Title": ("Échec d'installation de mise à jour", "Update install failure", "Installazione aggiornamento non riuscita"),
+        "Description": (
+            "Windows Update n'a pas pu installer une mise à jour.",
+            "Windows Update could not install an update.",
+            "Windows Update non è riuscito a installare un aggiornamento.",
+        ),
+        "Solution": (
+            "Exécutez l'utilitaire de résolution des problèmes Windows Update ou réessayez plus tard.",
+            "Run the Windows Update troubleshooter or try again later.",
+            "Esegui lo strumento di risoluzione problemi di Windows Update o riprova più tardi.",
+        ),
+    },
+    20: {
+        "sev": 1,
+        "Title": ("Échec de téléchargement de mise à jour", "Update download failure", "Download aggiornamento non riuscito"),
+        "Description": (
+            "Windows Update n'a pas pu télécharger les mises à jour.",
+            "Windows Update could not download updates.",
+            "Windows Update non è riuscito a scaricare gli aggiornamenti.",
+        ),
+        "Solution": (
+            "Vérifiez votre connexion Internet et l'espace disque disponible.",
+            "Check your Internet connection and free disk space.",
+            "Controlla la connessione Internet e lo spazio su disco.",
+        ),
+    },
+    1000: {
+        "sev": 1,
+        "Title": ("Plantage d'application", "Application crash", "Arresto anomalo dell'applicazione"),
+        "Description": (
+            "Une application s'est arrêtée de manière inattendue (crash).",
+            "An application stopped unexpectedly (crash).",
+            "Un'applicazione si è arrestata in modo imprevisto (crash).",
+        ),
+        "Solution": (
+            "Réinstallez l'application, mettez à jour les pilotes ou vérifiez les fichiers corrompus.",
+            "Reinstall the app, update drivers, or check for corrupted files.",
+            "Reinstalla l'app, aggiorna i driver o verifica file danneggiati.",
+        ),
+    },
+    1002: {
+        "sev": 2,
+        "Title": ("Blocage d'application", "Application hang", "Applicazione bloccata"),
+        "Description": (
+            "Une application ne répond plus.",
+            "An application is not responding.",
+            "Un'applicazione non risponde più.",
+        ),
+        "Solution": (
+            "Vérifiez si l'application est à jour et compatible avec votre version de Windows.",
+            "Check whether the app is up to date and compatible with your Windows version.",
+            "Verifica che l'app sia aggiornata e compatibile con la tua versione di Windows.",
+        ),
+    },
+    219: {
+        "sev": 1,
+        "Title": ("Échec de démarrage de pilote", "Driver start failure", "Avvio driver non riuscito"),
+        "Description": (
+            "Un pilote de périphérique n'a pas pu se charger au démarrage.",
+            "A device driver could not load at startup.",
+            "Un driver non è riuscito a caricarsi all'avvio.",
+        ),
+        "Solution": (
+            "1) Ouvrez le Gestionnaire de périphériques et cherchez un point d'exclamation.\n2) Mettez à jour le pilote (ou celui de la carte mère / GPU depuis le site du fabricant).\n3) Vérifiez Windows Update pour les pilotes optionnels.\n4) Si le problème a commencé après une installation, désinstallez le pilote récent.",
+            "1) Open Device Manager and look for an exclamation mark.\n2) Update the driver (or motherboard/GPU drivers from the manufacturer site).\n3) Check Windows Update for optional drivers.\n4) If it started after an install, uninstall the recent driver.",
+            "1) Apri Gestione dispositivi e cerca un punto esclamativo.\n2) Aggiorna il driver (o quelli di scheda madre/GPU dal sito del produttore).\n3) Controlla Windows Update per i driver opzionali.\n4) Se è iniziato dopo un'installazione, disinstalla il driver recente.",
+        ),
+    },
+    1001: {
+        "sev": 0,
+        "Title": ("Erreur de vérification de bugcheck", "Bugcheck verification error", "Errore di bugcheck"),
+        "Description": (
+            "Le système a détecté une erreur critique (écran bleu / BSOD) et a redémarré pour se protéger.",
+            "The system detected a critical error (blue screen / BSOD) and restarted to protect itself.",
+            "Il sistema ha rilevato un errore critico (schermata blu / BSOD) e si è riavviato per proteggersi.",
+        ),
+        "Solution": (
+            "1) Installez les mises à jour Windows (correctifs et pilotes).\n2) Ouvrez l'Historique de fiabilité pour voir quel programme ou pilote a planté juste avant.\n3) Mettez à jour les pilotes GPU, puce, stockage (site du fabricant du PC / carte mère).\n4) Lancez une réparation des fichiers système (SFC).\n5) Testez la mémoire (Diagnostic de mémoire Windows) si les plantages se répètent.\n6) En dernier recours, analysez le fichier dump (BlueScreenView / WinDbg) pour le pilote exact.",
+            "1) Install Windows updates (fixes and drivers).\n2) Open Reliability History to see which program or driver failed just before.\n3) Update GPU, chipset, and storage drivers (PC/motherboard maker site).\n4) Run a system file repair (SFC).\n5) Test memory (Windows Memory Diagnostic) if crashes continue.\n6) As a last resort, analyze the dump (BlueScreenView / WinDbg) for the exact driver.",
+            "1) Installa gli aggiornamenti Windows (correzioni e driver).\n2) Apri la Cronologia affidabilità per vedere quale programma o driver ha fallito prima.\n3) Aggiorna i driver GPU, chipset e storage (sito del produttore).\n4) Esegui una riparazione dei file di sistema (SFC).\n5) Testa la memoria (Diagnostica memoria Windows) se i crash continuano.\n6) Come ultima risorsa, analizza il dump (BlueScreenView / WinDbg) per il driver esatto.",
+        ),
+    },
+    2004: {
+        "sev": 2,
+        "Title": ("Problème de ressources système", "System resource problem", "Problema di risorse di sistema"),
+        "Description": (
+            "Le système manque de ressources (mémoire ou handles).",
+            "The system is low on resources (memory or handles).",
+            "Il sistema ha poche risorse (memoria o handle).",
+        ),
+        "Solution": (
+            "Fermez les applications inutilisées ou ajoutez de la RAM.",
+            "Close unused apps or add more RAM.",
+            "Chiudi le app inutilizzate o aggiungi RAM.",
+        ),
+    },
+    7000: {
+        "sev": 1,
+        "Title": ("Échec de démarrage de service", "Service start failure", "Avvio servizio non riuscito"),
+        "Description": (
+            "Un service Windows n'a pas pu démarrer.",
+            "A Windows service could not start.",
+            "Un servizio Windows non è riuscito ad avviarsi.",
+        ),
+        "Solution": (
+            "Vérifiez les dépendances du service et ses permissions dans services.msc.",
+            "Check service dependencies and permissions in services.msc.",
+            "Controlla dipendenze e autorizzazioni in services.msc.",
+        ),
+    },
+    7001: {
+        "sev": 1,
+        "Title": ("Service dépendant non démarré", "Dependent service not started", "Servizio dipendente non avviato"),
+        "Description": (
+            "Un service ne peut pas démarrer car un service dont il dépend n'est pas actif.",
+            "A service cannot start because a service it depends on is not running.",
+            "Un servizio non può avviarsi perché un servizio da cui dipende non è attivo.",
+        ),
+        "Solution": (
+            "Identifiez et démarrez le service dépendant en premier.",
+            "Identify and start the dependent service first.",
+            "Individua e avvia prima il servizio dipendente.",
+        ),
+    },
+    7009: {
+        "sev": 1,
+        "Title": ("Délai d'attente de service dépassé", "Service timeout exceeded", "Timeout del servizio superato"),
+        "Description": (
+            "Un service a mis trop de temps à répondre à une demande de démarrage ou de contrôle.",
+            "A service took too long to respond to a start or control request.",
+            "Un servizio ha impiegato troppo tempo a rispondere a una richiesta di avvio o controllo.",
+        ),
+        "Solution": (
+            "Le service peut être bloqué. Redémarrez le système ou désactivez le service problématique.",
+            "The service may be stuck. Restart the system or disable the problematic service.",
+            "Il servizio potrebbe essere bloccato. Riavvia il sistema o disabilita il servizio problematico.",
+        ),
+    },
+    7011: {
+        "sev": 2,
+        "Title": ("Délai d'attente transactionnel de service", "Service transactional timeout", "Timeout transazionale del servizio"),
+        "Description": (
+            "Un service n'a pas répondu dans le délai imparti lors d'une transaction.",
+            "A service did not respond within the allotted time during a transaction.",
+            "Un servizio non ha risposto entro il tempo previsto durante una transazione.",
+        ),
+        "Solution": (
+            "Vérifiez les performances système et les journaux du service spécifique.",
+            "Check system performance and the specific service logs.",
+            "Controlla le prestazioni di sistema e i log del servizio.",
+        ),
+    },
+    7031: {
+        "sev": 1,
+        "Title": ("Service terminé de manière inattendue", "Service terminated unexpectedly", "Servizio terminato in modo imprevisto"),
+        "Description": (
+            "Un service s'est arrêté de façon imprévue.",
+            "A service stopped unexpectedly.",
+            "Un servizio si è arrestato in modo imprevisto.",
+        ),
+        "Solution": (
+            "Configurez les options de récupération du service dans services.msc.",
+            "Configure the service recovery options in services.msc.",
+            "Configura le opzioni di ripristino del servizio in services.msc.",
+        ),
+    },
+    7034: {
+        "sev": 1,
+        "Title": ("Service terminé de manière inattendue (répété)", "Service terminated unexpectedly (repeated)", "Servizio terminato in modo imprevisto (ripetuto)"),
+        "Description": (
+            "Un service s'est arrêté sans raison apparente.",
+            "A service stopped for no apparent reason.",
+            "Un servizio si è arrestato senza motivo apparente.",
+        ),
+        "Solution": (
+            "Vérifiez les journaux d'application pour plus de détails sur la cause.",
+            "Check the application logs for more details about the cause.",
+            "Controlla i log delle applicazioni per maggiori dettagli sulla causa.",
+        ),
+    },
+    2019: {
+        "sev": 2,
+        "Title": ("Espace insuffisant pour le fichier d'échange", "Insufficient space for the page file", "Spazio insufficiente per il file di paging"),
+        "Description": (
+            "Le système manque d'espace pour agrandir le fichier d'échange.",
+            "The system lacks space to grow the page file.",
+            "Il sistema non ha spazio per ingrandire il file di paging.",
+        ),
+        "Solution": (
+            "Libérez de l'espace disque ou augmentez la taille du fichier d'échange.",
+            "Free disk space or increase the page file size.",
+            "Libera spazio su disco o aumenta la dimensione del file di paging.",
+        ),
+    },
+    10110: {
+        "sev": 2,
+        "Title": ("Problème d'alimentation USB", "USB power problem", "Problema di alimentazione USB"),
+        "Description": (
+            "Un périphérique USB demande plus de puissance que le port peut fournir.",
+            "A USB device is requesting more power than the port can supply.",
+            "Un dispositivo USB richiede più potenza di quanta ne possa fornire la porta.",
+        ),
+        "Solution": (
+            "Utilisez un hub USB alimenté ou connectez le périphérique directement au PC.",
+            "Use a powered USB hub or connect the device directly to the PC.",
+            "Usa un hub USB alimentato o collega il dispositivo direttamente al PC.",
+        ),
+    },
+    10: {
+        "sev": 2,
+        "Title": ("Certificat SSL/TLS expiré ou invalide", "Expired or invalid SSL/TLS certificate", "Certificato SSL/TLS scaduto o non valido"),
+        "Description": (
+            "Un certificat de sécurité utilisé pour une connexion HTTPS est invalide.",
+            "A security certificate used for an HTTPS connection is invalid.",
+            "Un certificato di sicurezza usato per una connessione HTTPS non è valido.",
+        ),
+        "Solution": (
+            "Mettez à jour les certificats racine ou contactez l'administrateur du service.",
+            "Update root certificates or contact the service administrator.",
+            "Aggiorna i certificati radice o contatta l'amministratore del servizio.",
+        ),
+    },
+    1: {
+        "sev": 3,
+        "Title": ("Modification de l'heure système", "System time change", "Modifica dell'ora di sistema"),
+        "Description": (
+            "L'heure du système a été modifiée.",
+            "The system time was changed.",
+            "L'ora di sistema è stata modificata.",
+        ),
+        "Solution": (
+            "Vérifiez que la synchronisation NTP fonctionne correctement.",
+            "Check that NTP time sync is working correctly.",
+            "Verifica che la sincronizzazione NTP funzioni correttamente.",
+        ),
+    },
+    1116: {
+        "sev": 2,
+        "Title": ("Menace détectée par Windows Defender", "Threat detected by Windows Defender", "Minaccia rilevata da Windows Defender"),
+        "Description": (
+            "Windows Defender a détecté un logiciel malveillant ou potentiellement indésirable.",
+            "Windows Defender detected malware or potentially unwanted software.",
+            "Windows Defender ha rilevato malware o software potenzialmente indesiderato.",
+        ),
+        "Solution": (
+            "Suivez les recommandations de Windows Defender pour supprimer ou mettre en quarantaine la menace.",
+            "Follow Windows Defender recommendations to remove or quarantine the threat.",
+            "Segui le raccomandazioni di Windows Defender per rimuovere o mettere in quarantena la minaccia.",
+        ),
+    },
+    1117: {
+        "sev": 3,
+        "Title": ("Action effectuée sur une menace", "Action taken on a threat", "Azione eseguita su una minaccia"),
+        "Description": (
+            "Windows Defender a pris des mesures contre une menace détectée.",
+            "Windows Defender took action against a detected threat.",
+            "Windows Defender ha agito contro una minaccia rilevata.",
+        ),
+        "Solution": (
+            "Vérifiez que la menace a été correctement traitée dans l'historique de protection.",
+            "Verify the threat was handled correctly in the protection history.",
+            "Verifica che la minaccia sia stata gestita correttamente nella cronologia protezione.",
+        ),
+    },
+    24: {
+        "sev": 1,
+        "Title": ("Volume BitLocker verrouillé", "BitLocker volume locked", "Volume BitLocker bloccato"),
+        "Description": (
+            "Un volume chiffré BitLocker est verrouillé et nécessite une clé de récupération.",
+            "A BitLocker-encrypted volume is locked and needs a recovery key.",
+            "Un volume crittografato BitLocker è bloccato e richiede una chiave di ripristino.",
+        ),
+        "Solution": (
+            "Utilisez votre clé de récupération BitLocker pour déverrouiller le volume.",
+            "Use your BitLocker recovery key to unlock the volume.",
+            "Usa la chiave di ripristino BitLocker per sbloccare il volume.",
+        ),
+    },
+    372: {
+        "sev": 1,
+        "Title": ("Erreur du spooler d'impression", "Print spooler error", "Errore dello spooler di stampa"),
+        "Description": (
+            "Le service de spouleur d'impression a rencontré un problème.",
+            "The print spooler service encountered a problem.",
+            "Il servizio spooler di stampa ha riscontrato un problema.",
+        ),
+        "Solution": (
+            "Redémarrez le service 'Spouleur d'impression' ou réinstallez les pilotes d'imprimante.",
+            "Restart the Print Spooler service or reinstall printer drivers.",
+            "Riavvia il servizio Spooler di stampa o reinstalla i driver della stampante.",
+        ),
+    },
+}
+
+SEV_KEYS = [
+    "Severity.CriticalLabel",
+    "Severity.ErrorLabel",
+    "Severity.WarningLabel",
+    "Severity.InfoLabel",
+]
+
+
+def build(lang_idx: int) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for key, vals in UI.items():
+        out[key] = vals[lang_idx]
+    for eid, fields in EVENTS.items():
+        for field in ("Title", "Description", "Solution"):
+            out[f"Event.{eid}.{field}"] = fields[field][lang_idx]
+        out[f"Event.{eid}.Severity"] = UI[SEV_KEYS[fields["sev"]]][lang_idx]
+    return out
+
+
+def main() -> None:
+    for code, idx in (("fr", 0), ("en", 1), ("it", 2)):
+        data = build(idx)
+        path = ROOT / f"strings.{code}.json"
+        path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print(f"{code}: {len(data)} keys -> {path}")
+
+
+if __name__ == "__main__":
+    main()

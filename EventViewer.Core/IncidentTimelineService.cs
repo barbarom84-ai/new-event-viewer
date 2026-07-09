@@ -37,7 +37,7 @@ public sealed class IncidentTimelineService
                 continue;
             }
 
-            if (string.Equals(evt.Level, "Erreur", StringComparison.OrdinalIgnoreCase))
+            if (EventSeverity.IsError(evt.Level))
             {
                 match.ErrorCount++;
             }
@@ -62,12 +62,9 @@ public sealed class IncidentTimelineService
             return evt.TimeCreatedAt.Value;
         }
 
-        if (DateTime.TryParseExact(
-                evt.TimeCreated,
-                "dd/MM/yyyy HH:mm",
-                CultureInfo.GetCultureInfo("fr-FR"),
-                DateTimeStyles.AssumeLocal,
-                out var parsed))
+        if (DateTime.TryParse(evt.TimeCreated, CultureInfo.CurrentUICulture, DateTimeStyles.AssumeLocal, out var parsed) ||
+            DateTime.TryParse(evt.TimeCreated, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out parsed) ||
+            DateTime.TryParseExact(evt.TimeCreated, "dd/MM/yyyy HH:mm", CultureInfo.GetCultureInfo("fr-FR"), DateTimeStyles.AssumeLocal, out parsed))
         {
             return parsed;
         }

@@ -247,7 +247,7 @@ namespace EventViewer
 
                         txtWriter.WriteLine();
                         txtWriter.WriteLine("═══════════════════════════════════════════════════════════════════");
-                        txtWriter.WriteLine("   Généré par Observateur d'Événements Moderne");
+                        txtWriter.WriteLine("   Généré par WinBeacon");
                         txtWriter.WriteLine("═══════════════════════════════════════════════════════════════════");
                     }
 

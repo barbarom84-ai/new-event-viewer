@@ -16,14 +16,14 @@ public sealed class AiAssistantService
     public AiAssistantService(ErrorAnalyzer errorAnalyzer, HttpClient? httpClient = null)
     {
         _errorAnalyzer = errorAnalyzer;
-        _httpClient = httpClient ?? new HttpClient { Timeout = TimeSpan.FromSeconds(25) };
+        _httpClient = httpClient ?? CreateDefaultHttpClient();
     }
 
     public async Task<string> BuildIncidentSummaryAsync(EventItem? evt, AppSettings settings, CancellationToken cancellationToken = default)
     {
         if (evt == null)
         {
-            return "Aucun incident sélectionné.";
+            return Loc.T("Ai.NoSelection");
         }
 
         var local = BuildLocalSummary(evt, settings.AiBetaEnabled);
@@ -33,9 +33,19 @@ public sealed class AiAssistantService
             return local;
         }
 
+        if (!settings.AiCloudDataConsent)
+        {
+            return local + "\n\n(Cloud désactivé : acceptez l'envoi des détails d'incident vers l'endpoint configuré.)";
+        }
+
+        if (!AiEndpointPolicy.TryValidate(settings.AiApiEndpoint, out var endpointUri, out var endpointError))
+        {
+            return local + $"\n\n(Endpoint IA refusé : {endpointError})";
+        }
+
         try
         {
-            var cloud = await BuildCloudSummaryAsync(evt, settings, cancellationToken);
+            var cloud = await BuildCloudSummaryAsync(evt, settings, endpointUri!, cancellationToken);
             if (!string.IsNullOrWhiteSpace(cloud))
             {
                 TelemetryService.Track("assistant_cloud_success", new Dictionary<string, string>
@@ -53,15 +63,24 @@ public sealed class AiAssistantService
         return local + "\n\n(Aucune réponse cloud : aperçu local ci-dessus.)";
     }
 
-    /// <summary>Backward-compatible overload used by older callers/tests. </summary>
+    /// <summary> Backward-compatible overload used by older callers/tests. </summary>
     public Task<string> BuildIncidentSummaryAsync(EventItem? evt, bool aiBetaEnabled)
         => BuildIncidentSummaryAsync(evt, new AppSettings { AiBetaEnabled = aiBetaEnabled });
 
     public static bool IsCloudConfigured(AppSettings settings)
     {
-        var endpoint = settings.AiApiEndpoint?.Trim() ?? string.Empty;
         var key = ResolveApiKey(settings);
-        return endpoint.StartsWith("http", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(key);
+        return AiEndpointPolicy.IsAllowed(settings.AiApiEndpoint) && !string.IsNullOrWhiteSpace(key);
+    }
+
+    private static HttpClient CreateDefaultHttpClient()
+    {
+        var handler = new HttpClientHandler
+        {
+            AllowAutoRedirect = false
+        };
+
+        return new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(25) };
     }
 
     private static string ResolveApiKey(AppSettings settings)
@@ -71,6 +90,15 @@ public sealed class AiAssistantService
             return settings.AiApiKey.Trim();
         }
 
+        if (!string.IsNullOrWhiteSpace(settings.AiApiKeyProtected))
+        {
+            var fromStore = SecretProtector.Unprotect(settings.AiApiKeyProtected);
+            if (!string.IsNullOrWhiteSpace(fromStore))
+            {
+                return fromStore;
+            }
+        }
+
         return Environment.GetEnvironmentVariable("EVENTVIEWER_AI_API_KEY")?.Trim() ?? string.Empty;
     }
 
@@ -78,35 +106,48 @@ public sealed class AiAssistantService
     {
         var explanation = _errorAnalyzer.GetExplanation(evt.EventId, evt.Source);
         var mode = aiBetaEnabled
-            ? "Mode IA bêta (explication locale — cloud non utilisé pour cette réponse)"
-            : "Mode local";
+            ? Loc.T("Ai.BetaLocal")
+            : Loc.T("Ai.LocalMode");
+
+        var componentLine = string.IsNullOrWhiteSpace(evt.RelatedComponentDisplay)
+            ? string.Empty
+            : $"\n\n{Loc.T("Detail.Component")} : {evt.RelatedComponentDisplay}";
 
         return
             $"{mode}\n\n" +
-            $"En bref : {explanation.Title}\n\n" +
-            $"Ce que ça signifie :\n{explanation.Description}\n\n" +
-            $"Que faire :\n{explanation.Solution}\n\n" +
-            $"Détail : {evt.Level} · {evt.Source} · code {evt.EventId}";
+            $"{Loc.T("Ai.InBrief")} : {explanation.Title}\n\n" +
+            $"{Loc.T("Ai.Meaning")} :\n{explanation.Description}{componentLine}\n\n" +
+            $"{Loc.T("Ai.WhatToDo")} :\n{explanation.Solution}\n\n" +
+            $"{Loc.T("Ai.Detail")} : {EventSeverity.Display(evt.Level)} · {evt.Source} · {evt.EventId}";
     }
 
-    private async Task<string?> BuildCloudSummaryAsync(EventItem evt, AppSettings settings, CancellationToken cancellationToken)
+    private async Task<string?> BuildCloudSummaryAsync(
+        EventItem evt,
+        AppSettings settings,
+        Uri endpoint,
+        CancellationToken cancellationToken)
     {
         var explanation = _errorAnalyzer.GetExplanation(evt.EventId, evt.Source);
-        var endpoint = settings.AiApiEndpoint.Trim();
         var model = string.IsNullOrWhiteSpace(settings.AiModel) ? "gpt-4o-mini" : settings.AiModel.Trim();
+        if (model.Length > 64 || model.Any(c => !(char.IsLetterOrDigit(c) || c is '-' or '_' or '.')))
+        {
+            throw new InvalidOperationException("Nom de modèle IA invalide.");
+        }
+
         var apiKey = ResolveApiKey(settings);
 
         var userPrompt =
-            "Explique cet événement Windows en français simple pour un utilisateur non technique. " +
-            "Réponds avec exactement 3 sections : En bref / Ce que ça signifie / Que faire. " +
-            "Sois concret et rassurant sans inventer de faits.\n\n" +
+            $"Explain this Windows event in {Loc.T("Ai.PromptLang")} for a non-technical user. " +
+            $"Reply with exactly 3 sections: {Loc.T("Ai.InBrief")} / {Loc.T("Ai.Meaning")} / {Loc.T("Ai.WhatToDo")}. " +
+            "Be concrete and reassuring without inventing facts.\n\n" +
             $"ID: {evt.EventId}\n" +
-            $"Niveau: {evt.Level}\n" +
-            $"Source: {evt.Source}\n" +
-            $"Catalogue: {explanation.Title}\n" +
-            $"Description catalogue: {explanation.Description}\n" +
-            $"Solution catalogue: {explanation.Solution}\n" +
-            $"Message: {Truncate(evt.FullMessage, 1200)}";
+            $"Level: {EventSeverity.Display(evt.Level)}\n" +
+            $"Source: {Truncate(evt.Source, 120)}\n" +
+            $"Component: {Truncate(evt.RelatedComponentDisplay ?? "-", 200)}\n" +
+            $"Catalog: {Truncate(explanation.Title, 200)}\n" +
+            $"Catalog description: {Truncate(explanation.Description, 400)}\n" +
+            $"Catalog solution: {Truncate(explanation.Solution, 400)}\n" +
+            $"Message: {Truncate(evt.FullMessage, 800)}";
 
         var requestBody = new AiChatRequest
         {
@@ -114,7 +155,7 @@ public sealed class AiAssistantService
             Temperature = 0.2,
             Messages =
             [
-                new AiChatMessage { Role = "system", Content = "Tu es un assistant de diagnostic Windows pour débutants." },
+                new AiChatMessage { Role = "system", Content = "You are a Windows diagnostic assistant for beginners." },
                 new AiChatMessage { Role = "user", Content = userPrompt }
             ]
         };
@@ -146,9 +187,9 @@ public sealed class AiAssistantService
         }
 
         return
-            "Mode IA cloud\n\n" +
-            content.Trim() +
-            $"\n\nDétail : {evt.Level} · {evt.Source} · code {evt.EventId}";
+            Loc.T("Ai.CloudMode") + "\n\n" +
+            Truncate(content.Trim(), 4000) +
+            $"\n\n{Loc.T("Ai.Detail")} : {EventSeverity.Display(evt.Level)} · {evt.Source} · {evt.EventId}";
     }
 
     private static string Truncate(string value, int max)

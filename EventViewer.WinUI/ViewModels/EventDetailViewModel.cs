@@ -6,19 +6,25 @@ namespace EventViewer.WinUI.ViewModels;
 public partial class EventDetailViewModel : ObservableObject
 {
     [ObservableProperty]
-    private string _headline = "Sélectionnez un incident";
+    private string _headline = Loc.T("Detail.SelectTitle");
 
     [ObservableProperty]
-    private string _meaning = "Choisissez une ligne à gauche pour lire une explication simple.";
+    private string _meaning = Loc.T("Detail.SelectMeaning");
 
     [ObservableProperty]
-    private string _action = "Rien à faire pour le moment.";
+    private string _action = Loc.T("Detail.SelectAction");
 
     [ObservableProperty]
     private string _technicalMessage = string.Empty;
 
     [ObservableProperty]
     private string _metaLine = string.Empty;
+
+    [ObservableProperty]
+    private string _relatedComponentLine = string.Empty;
+
+    [ObservableProperty]
+    private bool _hasRelatedComponent;
 
     [ObservableProperty]
     private string _assistantSummary = string.Empty;
@@ -45,7 +51,7 @@ public partial class EventDetailViewModel : ObservableObject
     private string _autoFixExplanation = string.Empty;
 
     [ObservableProperty]
-    private string _autoFixButtonLabel = "Corriger maintenant";
+    private string _autoFixButtonLabel = Loc.T("Confirm.Primary.Fix");
 
     [ObservableProperty]
     private bool _hasAutoFix;
@@ -64,11 +70,13 @@ public partial class EventDetailViewModel : ObservableObject
     public void Clear()
     {
         HasSelection = false;
-        Headline = "Sélectionnez un incident";
-        Meaning = "Choisissez une ligne à gauche pour lire une explication simple.";
-        Action = "Rien à faire pour le moment.";
+        Headline = Loc.T("Detail.SelectTitle");
+        Meaning = Loc.T("Detail.SelectMeaning");
+        Action = Loc.T("Detail.SelectAction");
         TechnicalMessage = string.Empty;
         MetaLine = string.Empty;
+        RelatedComponentLine = string.Empty;
+        HasRelatedComponent = false;
         AssistantSummary = string.Empty;
         HasAssistantSummary = false;
         FeedbackMessage = string.Empty;
@@ -80,11 +88,13 @@ public partial class EventDetailViewModel : ObservableObject
     public void Load(EventItem item, AutoFixRecommendation recommendation)
     {
         HasSelection = true;
-        Headline = item.ExplanationTitle ?? "Incident Windows";
+        Headline = item.ExplanationTitle ?? Loc.T("App.Title");
         Meaning = item.ExplanationDescription ?? item.Message;
-        Action = item.ExplanationSolution ?? "Notez le message et redémarrez l'ordinateur si le problème continue.";
+        Action = item.ExplanationSolution ?? Loc.T("Detail.SelectAction");
         TechnicalMessage = string.IsNullOrWhiteSpace(item.FullMessage) ? item.Message : item.FullMessage;
-        MetaLine = $"{RelativeTimeFormatter.Format(item.TimeCreatedAt)} · Source : {item.Source} · Code {item.EventId}";
+        MetaLine = $"{RelativeTimeFormatter.Format(item.TimeCreatedAt)} · {item.Source} · {item.EventId}";
+        RelatedComponentLine = item.RelatedComponentDisplay ?? string.Empty;
+        HasRelatedComponent = item.HasRelatedComponent;
         ShowTechnical = false;
         AssistantSummary = string.Empty;
         HasAssistantSummary = false;
@@ -110,7 +120,7 @@ public partial class EventDetailViewModel : ObservableObject
         CurrentAutoFix = null;
         AutoFixTitle = string.Empty;
         AutoFixExplanation = string.Empty;
-        AutoFixButtonLabel = "Corriger maintenant";
+        AutoFixButtonLabel = Loc.T("Confirm.Primary.Fix");
         HasAutoFix = false;
         CanRunAutoFix = false;
         AutoFixResult = string.Empty;

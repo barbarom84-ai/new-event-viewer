@@ -8,33 +8,33 @@ public static class RelativeTimeFormatter
     {
         if (timestamp is null)
         {
-            return "date inconnue";
+            return Loc.T("Time.Unknown");
         }
 
         var delta = DateTime.Now - timestamp.Value;
         if (delta.TotalMinutes < 1)
         {
-            return "à l'instant";
+            return Loc.T("Time.JustNow");
         }
 
         if (delta.TotalMinutes < 60)
         {
             var minutes = (int)delta.TotalMinutes;
-            return minutes <= 1 ? "il y a 1 min" : $"il y a {minutes} min";
+            return minutes <= 1 ? Loc.T("Time.Minute") : Loc.T("Time.Minutes", minutes);
         }
 
         if (delta.TotalHours < 24)
         {
             var hours = (int)delta.TotalHours;
-            return hours <= 1 ? "il y a 1 h" : $"il y a {hours} h";
+            return hours <= 1 ? Loc.T("Time.Hour") : Loc.T("Time.Hours", hours);
         }
 
         if (delta.TotalDays < 7)
         {
             var days = (int)delta.TotalDays;
-            return days <= 1 ? "hier" : $"il y a {days} jours";
+            return days <= 1 ? Loc.T("Time.Yesterday") : Loc.T("Time.Days", days);
         }
 
-        return timestamp.Value.ToString("dd MMM yyyy", CultureInfo.GetCultureInfo("fr-FR"));
+        return timestamp.Value.ToString("dd MMM yyyy", CultureInfo.CurrentUICulture);
     }
 }

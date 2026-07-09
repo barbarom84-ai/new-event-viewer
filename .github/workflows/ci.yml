@@ -24,23 +24,19 @@ jobs:
       - name: Build Core
         run: dotnet build EventViewer.Core/EventViewer.Core.csproj -c Release --no-restore
 
-      - name: Build WPF legacy
-        run: dotnet build EventViewer.csproj -c Release --no-restore
-
-      - name: Build WPF (Store flag)
-        run: dotnet build EventViewer.csproj -c Release -p:StoreBuild=true --no-restore
-
       - name: Build WinUI
         run: dotnet build EventViewer.WinUI/EventViewer.WinUI.csproj -c Release -p:Platform=x64 --no-restore
 
       - name: Build WinUI (Store flag)
         run: dotnet build EventViewer.WinUI/EventViewer.WinUI.csproj -c Release -p:Platform=x64 -p:StoreBuild=true --no-restore
 
-      - name: Build WinUI USB publish smoke
-        run: dotnet publish EventViewer.WinUI/EventViewer.WinUI.csproj -c Release -p:Platform=x64 -p:WindowsPackageType=None --self-contained false -r win-x64 -o bin/WinUI_USB_CI
-
-      - name: Build WinUI Store-flagged publish smoke
-        run: dotnet publish EventViewer.WinUI/EventViewer.WinUI.csproj -c Release -p:Platform=x64 -p:StoreBuild=true -p:WindowsPackageType=None --self-contained false -r win-x64 -o bin/WinUI_Store_CI
+      - name: Build WPF legacy (compile gate)
+        run: dotnet build EventViewer.csproj -c Release --no-restore
 
       - name: Test
         run: dotnet test EventViewer.Tests/EventViewer.Tests.csproj -c Release --verbosity normal
+
+      - name: Publish smoke USB + Store
+        run: |
+          dotnet publish EventViewer.WinUI/EventViewer.WinUI.csproj -c Release -p:Platform=x64 -p:WindowsPackageType=None --self-contained false -r win-x64 -o bin/WinUI_USB_CI
+          dotnet publish EventViewer.WinUI/EventViewer.WinUI.csproj -c Release -p:Platform=x64 -p:StoreBuild=true -p:WindowsPackageType=None --self-contained false -r win-x64 -o bin/WinUI_Store_CI

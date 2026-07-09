@@ -32,6 +32,35 @@ public class AutoFixServiceTests
         Assert.Equal(AutoFixKind.DiskCleanup, fix.Kind);
     }
 
+    [Fact]
+    public void Recommend_Dcom10016_DoesNotSuggestNetworkFix()
+    {
+        var item = Create(10016, "Microsoft-Windows-DistributedCOM", "Avertissement", "Permissions DCOM insuffisantes");
+        var fix = _service.Recommend(item, isStoreBuild: false);
+        Assert.Equal(AutoFixKind.None, fix.Kind);
+        Assert.False(fix.CanExecuteAutomatically);
+    }
+
+    [Fact]
+    public void Recommend_Bugcheck1001_SuggestsReliabilityHistory()
+    {
+        var item = Create(1001, "Microsoft-Windows-WER-SystemErrorReporting", "Critique", "bugcheck");
+        var fix = _service.Recommend(item, isStoreBuild: false);
+        Assert.Equal(AutoFixKind.OpenReliabilityHistory, fix.Kind);
+        Assert.True(fix.CanExecuteAutomatically);
+    }
+
+    [Fact]
+    public void GetExplanation_Bugcheck_ListsMultipleSteps()
+    {
+        var explanation = new ErrorAnalyzer().GetExplanation(1001, "Microsoft-Windows-WER-SystemErrorReporting");
+        Assert.Contains("Historique de fiabilité", explanation.Solution);
+        Assert.Contains("mises à jour Windows", explanation.Solution);
+        Assert.Contains("SFC", explanation.Solution);
+        Assert.Contains("mémoire", explanation.Solution, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("BlueScreenView", explanation.Solution);
+    }
+
     private static EventItem Create(int id, string source, string level, string message)
         => new()
         {

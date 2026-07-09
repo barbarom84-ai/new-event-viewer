@@ -1,35 +1,50 @@
 # Dossiers de build
-bin/
-obj/
-publish/
-EventViewer.WinUI/bin/
-EventViewer.WinUI/obj/
-EventViewer.Core/bin/
-EventViewer.Core/obj/
+[Bb]in/
+[Oo]bj/
+[Pp]ublish/
+**/AppPackages/
+**/BundleArtifacts/
+**/_ReSharper*/
+**/*_wpftmp.csproj
+**/fixed_out/
 
-# Fichiers Visual Studio
+# Artefacts publish locaux
+bin/WinUI_*/
+bin/USB*/
+*.msix
+*.msixbundle
+*.appx
+*.appxbundle
+
+# Runtime local généré
+**/appsettings.json
+**/.event_snapshot.json
+**/recommendation-feedback.jsonl
+**/telemetry.log.jsonl
+
+# Visual Studio / IDE
 .vs/
 .vscode/
 *.user
 *.suo
 *.userosscache
 *.sln.docstates
-
-# Fichiers ReSharper
-_ReSharper*/
 *.DotSettings.user
 
-# Fichiers temporaires
+# Temporaires
 *.tmp
 *.temp
 *.log
+*.cache
 
-# Fichiers Windows
+# Signing / secrets (ne jamais committer)
+artifacts/
+*.pfx
+*.p12
+*.key
+*.pem
+!assets/**
+
+# Windows
 Thumbs.db
 Desktop.ini
-
-# WinUI generated
-**/AppPackages/
-**/BundleArtifacts/
-**/*_wpftmp.csproj
-

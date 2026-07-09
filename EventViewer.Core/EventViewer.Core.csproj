@@ -14,6 +14,24 @@
 
   <ItemGroup>
     <PackageReference Include="System.Diagnostics.EventLog" Version="8.0.1" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- WithCulture=false: otherwise MSBuild treats strings.fr.json as a fr satellite and drops it from the main DLL. -->
+    <EmbeddedResource Include="Localization\strings.fr.json">
+      <LogicalName>EventViewer.Core.strings.fr.json</LogicalName>
+      <WithCulture>false</WithCulture>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Localization\strings.en.json">
+      <LogicalName>EventViewer.Core.strings.en.json</LogicalName>
+      <WithCulture>false</WithCulture>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Localization\strings.it.json">
+      <LogicalName>EventViewer.Core.strings.it.json</LogicalName>
+      <WithCulture>false</WithCulture>
+    </EmbeddedResource>
+    <None Include="Localization\strings.*.json" CopyToOutputDirectory="PreserveNewest" LinkBase="Localization" />
   </ItemGroup>
 
 </Project>

@@ -26,17 +26,35 @@ jobs:
       - name: Restore
         run: dotnet restore EventViewer.sln
 
-      - name: Publish
-        run: >
-          dotnet publish EventViewer.csproj
-          -c Release
-          -r win-x64
-          --self-contained true
-          -p:PublishSingleFile=true
-          -p:StoreBuild=${{ github.event.inputs.channel == 'preview' && 'false' || 'true' }}
+      - name: Test
+        run: dotnet test EventViewer.Tests/EventViewer.Tests.csproj -c Release --verbosity minimal
+
+      - name: Publish WinUI USB (preview) or Store-flagged (stable)
+        shell: pwsh
+        run: |
+          if ("${{ github.event.inputs.channel }}" -eq "stable") {
+            .\build_winui_store.ps1 -Output "bin/WinUI_Preview"
+          } else {
+            .\build_winui_usb.ps1 -Output "bin/WinUI_Preview"
+          }
+
+      - name: Optional Authenticode sign
+        shell: pwsh
+        env:
+          EVENTVIEWER_SIGN_PFX_BASE64: ${{ secrets.EVENTVIEWER_SIGN_PFX_BASE64 }}
+          EVENTVIEWER_SIGN_PFX_PASSWORD: ${{ secrets.EVENTVIEWER_SIGN_PFX_PASSWORD }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:EVENTVIEWER_SIGN_PFX_BASE64)) {
+            Write-Host "No EVENTVIEWER_SIGN_PFX_BASE64 secret — skipping Authenticode."
+            exit 0
+          }
+          $pfx = Join-Path $env:RUNNER_TEMP "codesign.pfx"
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:EVENTVIEWER_SIGN_PFX_BASE64))
+          $env:EVENTVIEWER_SIGN_PFX = $pfx
+          .\tools\Sign-Authenticode.ps1 -Path "bin/WinUI_Preview/EventViewer.WinUI.exe"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: eventviewer-${{ github.event.inputs.channel }}
-          path: bin/Release/net8.0-windows/win-x64/publish/**
+          name: eventviewer-winui-${{ github.event.inputs.channel }}
+          path: bin/WinUI_Preview/**

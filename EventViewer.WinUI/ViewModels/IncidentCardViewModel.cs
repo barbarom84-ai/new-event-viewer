@@ -16,9 +16,10 @@ public partial class IncidentCardViewModel : ObservableObject
         SecondaryInfo = string.IsNullOrWhiteSpace(item.Tag?.Name)
             ? item.Source
             : $"{item.Tag!.Name} · {item.Source}";
-        IsCritical = string.Equals(item.Level, "Erreur", StringComparison.OrdinalIgnoreCase);
-        IsWarning = string.Equals(item.Level, "Avertissement", StringComparison.OrdinalIgnoreCase);
+        IsCritical = EventSeverity.IsError(item.Level);
+        IsWarning = EventSeverity.IsWarning(item.Level);
         IsNew = item.IsNew;
+        NewBadge = Loc.T("Badge.New");
     }
 
     public EventItem Item { get; }
@@ -29,6 +30,7 @@ public partial class IncidentCardViewModel : ObservableObject
     public bool IsCritical { get; }
     public bool IsWarning { get; }
     public bool IsNew { get; }
+    public string NewBadge { get; }
 
     private static string Truncate(string value, int max)
         => value.Length <= max ? value : value[..(max - 3)] + "...";

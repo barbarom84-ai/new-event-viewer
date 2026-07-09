@@ -18,6 +18,8 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <PublishReadyToRun>false</PublishReadyToRun>
     <OptimizationPreference>Speed</OptimizationPreference>
+    <!-- Legacy WPF app: keep shippable until fully retired. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);EventViewer.Core\**;EventViewer.WinUI\**;EventViewer.Tests\**;EventViewer.Package\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <!-- Build flag for Microsoft Store packaging -->
@@ -27,8 +29,13 @@
 
   <ItemGroup>
     <Compile Remove="EventViewer.Tests\**\*.cs" />
+    <Compile Remove="EventViewer.Core\**\*.cs" />
+    <Compile Remove="EventViewer.WinUI\**\*.cs" />
     <None Remove="EventViewer.Tests\**\*" />
+    <None Remove="EventViewer.Core\**\*" />
+    <None Remove="EventViewer.WinUI\**\*" />
+    <Page Remove="EventViewer.WinUI\**\*.xaml" />
+    <ApplicationDefinition Remove="EventViewer.WinUI\**\App.xaml" />
   </ItemGroup>
 
 </Project>
-
