@@ -1,5 +1,6 @@
 using EventViewer.Core;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Windows.UI;
 
@@ -22,6 +23,10 @@ public static class AppThemeService
     public const string Forest = "forest";
 
     public static readonly string[] Supported = [Dark, Light, Midnight, Forest];
+
+    public static string CurrentThemeId { get; private set; } = Dark;
+
+    public static ElementTheme CurrentElementTheme { get; private set; } = ElementTheme.Dark;
 
     public static string Normalize(string? id)
     {
@@ -80,16 +85,55 @@ public static class AppThemeService
         SetBrushColor(resources, "AppInfoBrush", palette.Info);
         SetBrushColor(resources, "AppActionBrush", palette.Action);
 
-        var elementTheme = palette.IsLight ? ElementTheme.Light : ElementTheme.Dark;
-        if (root != null)
-        {
-            root.RequestedTheme = elementTheme;
-        }
+        CurrentThemeId = id;
+        CurrentElementTheme = palette.IsLight ? ElementTheme.Light : ElementTheme.Dark;
 
+        ApplyElementTheme(root);
         if (App.MainWindow?.Content is FrameworkElement windowRoot && !ReferenceEquals(windowRoot, root))
         {
-            windowRoot.RequestedTheme = elementTheme;
+            ApplyElementTheme(windowRoot);
         }
+    }
+
+    /// <summary>
+    /// ContentDialog / flyouts do not always inherit the page theme — set explicitly.
+    /// </summary>
+    public static void ApplyElementTheme(FrameworkElement? element)
+    {
+        if (element == null)
+        {
+            return;
+        }
+
+        element.RequestedTheme = CurrentElementTheme;
+    }
+
+    public static void StyleContentDialog(ContentDialog dialog)
+    {
+        ApplyElementTheme(dialog);
+        dialog.Background = Brush("AppSurfaceBrush");
+        dialog.Foreground = Brush("AppTextBrush");
+        dialog.BorderBrush = Brush("AppBorderBrush");
+        dialog.CornerRadius = new CornerRadius(12);
+
+        // WinUI light resources can wash out dialog chrome — pin our brushes.
+        dialog.Resources["ContentDialogBackground"] = Brush("AppSurfaceBrush");
+        dialog.Resources["ContentDialogForeground"] = Brush("AppTextBrush");
+        dialog.Resources["ContentDialogBorderBrush"] = Brush("AppBorderBrush");
+        dialog.Resources["TextFillColorPrimaryBrush"] = Brush("AppTextBrush");
+        dialog.Resources["TextFillColorSecondaryBrush"] = Brush("AppMutedBrush");
+        dialog.Resources["ControlFillColorDefaultBrush"] = Brush("AppSurfaceElevatedBrush");
+        dialog.Resources["ControlStrokeColorDefaultBrush"] = Brush("AppBorderBrush");
+    }
+
+    private static Brush Brush(string key)
+    {
+        if (Application.Current.Resources.TryGetValue(key, out var value) && value is Brush brush)
+        {
+            return brush;
+        }
+
+        return new SolidColorBrush(ColorFromHex("#FF1A1D24"));
     }
 
     private static void SetBrushColor(ResourceDictionary resources, string key, Color color)
@@ -105,19 +149,20 @@ public static class AppThemeService
 
     private static ThemePalette Resolve(string id) => id switch
     {
+        // Soft paper light theme: avoid pure white glare, keep secondary text readable.
         Light => new ThemePalette(
             IsLight: true,
-            Background: ColorFromHex("#FFF4F6F8"),
-            Surface: ColorFromHex("#FFFFFFFF"),
-            SurfaceElevated: ColorFromHex("#FFEEF1F5"),
-            Border: ColorFromHex("#FFD0D7DE"),
-            Text: ColorFromHex("#FF1F2328"),
-            Muted: ColorFromHex("#FF656D76"),
-            Accent: ColorFromHex("#FF0D9488"),
-            Critical: ColorFromHex("#FFCF222E"),
-            Warning: ColorFromHex("#FF9A6700"),
-            Info: ColorFromHex("#FF0969DA"),
-            Action: ColorFromHex("#FF0969DA")),
+            Background: ColorFromHex("#FFE4E8EE"),
+            Surface: ColorFromHex("#FFF3F5F8"),
+            SurfaceElevated: ColorFromHex("#FFE8ECF2"),
+            Border: ColorFromHex("#FFA8B2C0"),
+            Text: ColorFromHex("#FF12151A"),
+            Muted: ColorFromHex("#FF3D4654"),
+            Accent: ColorFromHex("#FF0B7F76"),
+            Critical: ColorFromHex("#FFB42318"),
+            Warning: ColorFromHex("#FF8A5A00"),
+            Info: ColorFromHex("#FF0B5CAD"),
+            Action: ColorFromHex("#FF0B5CAD")),
         Midnight => new ThemePalette(
             IsLight: false,
             Background: ColorFromHex("#FF0B1220"),

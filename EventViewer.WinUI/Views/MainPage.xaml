@@ -152,11 +152,8 @@
                                     Height="{x:Bind BarHeight}"
                                     VerticalAlignment="Bottom"
                                     CornerRadius="3"
-                                    ToolTipService.ToolTip="{x:Bind TotalCount}">
-                                    <Border.Background>
-                                        <SolidColorBrush Color="#FF3DDC97" Opacity="0.85" />
-                                    </Border.Background>
-                                </Border>
+                                    Background="{StaticResource AppAccentBrush}"
+                                    ToolTipService.ToolTip="{x:Bind TotalCount}" />
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>

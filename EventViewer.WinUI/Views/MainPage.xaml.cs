@@ -5,6 +5,7 @@ using EventViewer.WinUI.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 
 namespace EventViewer.WinUI.Views;
@@ -20,6 +21,7 @@ public sealed partial class MainPage : Page
             ViewModel = App.Services.GetRequiredService<MainViewModel>();
             InitializeComponent();
             DataContext = ViewModel;
+            AppThemeService.ApplyElementTheme(this);
             if (ToolsMenuItem != null)
             {
                 ToolsMenuItem.Visibility = ViewModel.ShowMaintenance
@@ -112,6 +114,7 @@ public sealed partial class MainPage : Page
             DefaultButton = ContentDialogButton.Close,
             XamlRoot = XamlRoot
         };
+        AppThemeService.StyleContentDialog(dialog);
 
         var result = await dialog.ShowAsync();
         return result == ContentDialogResult.Primary;
@@ -125,6 +128,7 @@ public sealed partial class MainPage : Page
             MaxHeight = 480,
             Content = BuildOptionsPanel()
         };
+        AppThemeService.ApplyElementTheme(content);
 
         var dialog = new ContentDialog
         {
@@ -134,14 +138,17 @@ public sealed partial class MainPage : Page
             DefaultButton = ContentDialogButton.Close,
             XamlRoot = XamlRoot
         };
+        AppThemeService.StyleContentDialog(dialog);
 
         await dialog.ShowAsync();
     }
 
     private UIElement BuildOptionsPanel()
     {
-        var muted = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AppMutedBrush"];
+        var muted = (Brush)Application.Current.Resources["AppMutedBrush"];
+        var text = (Brush)Application.Current.Resources["AppTextBrush"];
         var root = new StackPanel { Spacing = 12, Width = 420, Padding = new Thickness(4, 0, 12, 0) };
+        AppThemeService.ApplyElementTheme(root);
 
         root.Children.Add(new TextBlock
         {
@@ -156,8 +163,10 @@ public sealed partial class MainPage : Page
             DisplayMemberPath = nameof(LanguageOption.DisplayName),
             SelectedItem = ViewModel.SelectedLanguage,
             Width = 260,
-            HorizontalAlignment = HorizontalAlignment.Left
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Foreground = text
         };
+        AppThemeService.ApplyElementTheme(languageBox);
         languageBox.SelectionChanged += (_, _) =>
         {
             if (languageBox.SelectedItem is LanguageOption option)
@@ -188,8 +197,10 @@ public sealed partial class MainPage : Page
             DisplayMemberPath = nameof(ThemeOption.DisplayName),
             SelectedItem = ViewModel.SelectedTheme,
             Width = 260,
-            HorizontalAlignment = HorizontalAlignment.Left
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Foreground = text
         };
+        AppThemeService.ApplyElementTheme(themeBox);
         themeBox.SelectionChanged += (_, _) =>
         {
             if (themeBox.SelectedItem is ThemeOption option)
@@ -213,6 +224,7 @@ public sealed partial class MainPage : Page
             OffContent = Loc.T("Options.Off"),
             IsOn = ViewModel.TelemetryOptIn
         };
+        AppThemeService.ApplyElementTheme(telemetry);
         telemetry.Toggled += (_, _) => ViewModel.TelemetryOptIn = telemetry.IsOn;
         root.Children.Add(telemetry);
 
@@ -223,6 +235,7 @@ public sealed partial class MainPage : Page
             OffContent = Loc.T("Options.Off"),
             IsOn = ViewModel.AiBetaEnabled
         };
+        AppThemeService.ApplyElementTheme(aiBeta);
         root.Children.Add(aiBeta);
 
         var consent = new ToggleSwitch
@@ -233,6 +246,7 @@ public sealed partial class MainPage : Page
             IsOn = ViewModel.AiCloudDataConsent,
             IsEnabled = ViewModel.AiBetaEnabled
         };
+        AppThemeService.ApplyElementTheme(consent);
         consent.Toggled += (_, _) => ViewModel.AiCloudDataConsent = consent.IsOn;
         aiBeta.Toggled += (_, _) =>
         {
@@ -245,8 +259,10 @@ public sealed partial class MainPage : Page
         {
             Header = Loc.T("Options.AiEndpoint"),
             PlaceholderText = "https://api.openai.com/v1/chat/completions",
-            Text = ViewModel.AiEndpoint
+            Text = ViewModel.AiEndpoint,
+            Foreground = text
         };
+        AppThemeService.ApplyElementTheme(endpoint);
         endpoint.TextChanged += (_, _) => ViewModel.AiEndpoint = endpoint.Text;
         root.Children.Add(endpoint);
 
@@ -254,8 +270,10 @@ public sealed partial class MainPage : Page
         {
             Header = Loc.T("Options.AiModel"),
             PlaceholderText = "gpt-4o-mini",
-            Text = ViewModel.AiModel
+            Text = ViewModel.AiModel,
+            Foreground = text
         };
+        AppThemeService.ApplyElementTheme(model);
         model.TextChanged += (_, _) => ViewModel.AiModel = model.Text;
         root.Children.Add(model);
 
@@ -264,20 +282,20 @@ public sealed partial class MainPage : Page
             Text = ViewModel.AiCloudStatus,
             FontSize = 12,
             TextWrapping = TextWrapping.WrapWholeWords,
-            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AppMutedBrush"]
+            Foreground = text
         });
         root.Children.Add(new TextBlock
         {
             Text = Loc.T("Options.AiKeyHint"),
             FontSize = 11,
             TextWrapping = TextWrapping.WrapWholeWords,
-            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AppMutedBrush"]
+            Foreground = muted
         });
         root.Children.Add(new TextBlock
         {
             Text = ViewModel.ToolsStatus,
             FontSize = 12,
-            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AppMutedBrush"]
+            Foreground = text
         });
 
         return root;
@@ -303,6 +321,7 @@ public sealed partial class MainPage : Page
             CloseButtonText = Loc.T("About.Close"),
             XamlRoot = XamlRoot
         };
+        AppThemeService.StyleContentDialog(dialog);
 
         await dialog.ShowAsync();
     }

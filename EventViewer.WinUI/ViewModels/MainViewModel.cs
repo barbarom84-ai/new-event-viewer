@@ -3,6 +3,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EventViewer.Core;
 using EventViewer.WinUI.Themes;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 
 namespace EventViewer.WinUI.ViewModels;
 
@@ -464,7 +466,13 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
-        AppThemeService.Apply(value.Id);
+        FrameworkElement? root = null;
+        if (App.MainWindow?.Content is Frame frame)
+        {
+            root = frame.Content as FrameworkElement ?? frame;
+        }
+
+        AppThemeService.Apply(value.Id, root);
         StatusMessage = Loc.T("Theme.Applied", value.DisplayName);
         TelemetryService.Track("theme_changed", new Dictionary<string, string>
         {

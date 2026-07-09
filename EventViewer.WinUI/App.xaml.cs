@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
+using WinRT.Interop;
 
 namespace EventViewer.WinUI;
 
@@ -61,6 +62,7 @@ public partial class App : Application
                 Title = Loc.T("App.Title")
             };
             MainWindow = _window;
+            TrySetWindowIcon(_window);
 
             if (_window.Content is not Frame rootFrame)
             {
@@ -86,6 +88,32 @@ public partial class App : Application
         {
             WriteStartupCrash("OnLaunched", ex);
             throw;
+        }
+    }
+
+    private static void TrySetWindowIcon(Window window)
+    {
+        try
+        {
+            var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "app.ico");
+            if (!File.Exists(iconPath))
+            {
+                iconPath = Path.Combine(AppContext.BaseDirectory, "app.ico");
+            }
+
+            if (!File.Exists(iconPath))
+            {
+                return;
+            }
+
+            var hwnd = WindowNative.GetWindowHandle(window);
+            var windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hwnd);
+            var appWindow = Microsoft.UI.Windowing.AppWindow.GetFromWindowId(windowId);
+            appWindow?.SetIcon(iconPath);
+        }
+        catch (Exception ex)
+        {
+            WriteStartupCrash("SetWindowIcon", ex);
         }
     }
 

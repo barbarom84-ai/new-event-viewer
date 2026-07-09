@@ -29,8 +29,12 @@
             <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="14" />
                 <Setter Property="FontWeight" Value="SemiBold" />
-                <Setter Property="Foreground" Value="{StaticResource AppMutedBrush}" />
+                <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
                 <Setter Property="Margin" Value="0,0,0,8" />
+            </Style>
+
+            <Style TargetType="HyperlinkButton">
+                <Setter Property="Foreground" Value="{StaticResource AppAccentBrush}" />
             </Style>
 
             <Style x:Key="PrimaryButtonStyle" TargetType="Button">
@@ -47,6 +51,13 @@
                 <Setter Property="CornerRadius" Value="8" />
                 <Setter Property="BorderBrush" Value="{StaticResource AppBorderBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
+            </Style>
+
+            <Style TargetType="ContentDialog">
+                <Setter Property="Background" Value="{StaticResource AppSurfaceBrush}" />
+                <Setter Property="Foreground" Value="{StaticResource AppTextBrush}" />
+                <Setter Property="BorderBrush" Value="{StaticResource AppBorderBrush}" />
+                <Setter Property="CornerRadius" Value="12" />
             </Style>
         </ResourceDictionary>
     </Application.Resources>
