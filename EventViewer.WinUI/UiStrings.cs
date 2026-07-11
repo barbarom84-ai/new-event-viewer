@@ -26,6 +26,7 @@ public sealed class UiStrings : ObservableObject
     public string LogHeader => Loc.T("Log.Header");
     public string SearchHeader => Loc.T("Search.Header");
     public string SearchPlaceholder => Loc.T("Search.Placeholder");
+    public string FilterSeverityHeader => Loc.T("Filter.Severity.Header");
     public string ActionRefresh => Loc.T("Action.Refresh");
     public string ActionExportCsv => Loc.T("Action.ExportCsv");
     public string ActionExportJson => Loc.T("Action.ExportJson");
@@ -45,6 +46,8 @@ public sealed class UiStrings : ObservableObject
     public string OptionsAiEndpoint => Loc.T("Options.AiEndpoint");
     public string OptionsAiModel => Loc.T("Options.AiModel");
     public string OptionsAiKeyHint => Loc.T("Options.AiKeyHint");
+    public string OptionsAdvancedMode => Loc.T("Options.AdvancedMode");
+    public string OptionsAdvancedHint => Loc.T("Options.AdvancedHint");
     public string LangLabel => Loc.T("Lang.Label");
     public string LangHint => Loc.T("Lang.RestartHint");
     public string ThemeLabel => Loc.T("Theme.Label");

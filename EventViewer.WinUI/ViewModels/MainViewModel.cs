@@ -20,6 +20,12 @@ public sealed class LanguageOption
     public required string DisplayName { get; set; }
 }
 
+public sealed class SeverityFilterOption
+{
+    public required string Id { get; init; }
+    public required string DisplayName { get; set; }
+}
+
 public partial class MainViewModel : ObservableObject
 {
     private readonly IEventLogService _eventLogService;
@@ -79,10 +85,17 @@ public partial class MainViewModel : ObservableObject
             new LanguageOption { Code = AppLanguage.Italian, DisplayName = "Italiano" }
         ];
         ThemeOptions = AppThemeService.CreateOptions().ToList();
+        SeverityFilterOptions =
+        [
+            new SeverityFilterOption { Id = SeverityFilter.All, DisplayName = Loc.T("Filter.Severity.All") },
+            new SeverityFilterOption { Id = SeverityFilter.Critical, DisplayName = Loc.T("Filter.Severity.Critical") },
+            new SeverityFilterOption { Id = SeverityFilter.Watch, DisplayName = Loc.T("Filter.Severity.Watch") }
+        ];
 
         _isHydratingSettings = true;
         TelemetryOptIn = _settings.TelemetryOptIn;
         AiBetaEnabled = _settings.AiBetaEnabled;
+        AdvancedMode = _settings.UiAdvancedMode;
         AiCloudDataConsent = _settings.AiCloudDataConsent;
         AiEndpoint = _settings.AiApiEndpoint ?? string.Empty;
         AiModel = string.IsNullOrWhiteSpace(_settings.AiModel) ? "gpt-4o-mini" : _settings.AiModel;
@@ -90,6 +103,7 @@ public partial class MainViewModel : ObservableObject
                            ?? LanguageOptions[0];
         SelectedTheme = ThemeOptions.FirstOrDefault(t => t.Id == AppThemeService.Normalize(_settings.UiTheme))
                         ?? ThemeOptions[0];
+        SelectedSeverityFilter = SeverityFilterOptions[0];
         _isHydratingSettings = false;
 
         RefreshLogOptions();
@@ -114,12 +128,16 @@ public partial class MainViewModel : ObservableObject
     public ObservableCollection<LogOption> LogOptions { get; } = [];
     public IReadOnlyList<LanguageOption> LanguageOptions { get; }
     public IReadOnlyList<ThemeOption> ThemeOptions { get; }
+    public IReadOnlyList<SeverityFilterOption> SeverityFilterOptions { get; }
 
     [ObservableProperty]
     private LanguageOption? _selectedLanguage;
 
     [ObservableProperty]
     private ThemeOption? _selectedTheme;
+
+    [ObservableProperty]
+    private SeverityFilterOption? _selectedSeverityFilter;
 
     [ObservableProperty]
     private LogOption? _selectedLog;
@@ -209,6 +227,9 @@ public partial class MainViewModel : ObservableObject
     private bool _aiBetaEnabled;
 
     [ObservableProperty]
+    private bool _advancedMode;
+
+    [ObservableProperty]
     private bool _aiCloudDataConsent;
 
     [ObservableProperty]
@@ -235,6 +256,14 @@ public partial class MainViewModel : ObservableObject
         _filterDebounceTimer.Start();
     }
 
+    partial void OnSelectedSeverityFilterChanged(SeverityFilterOption? value)
+    {
+        if (value != null)
+        {
+            ApplyFilter();
+        }
+    }
+
     partial void OnSelectedLogChanged(LogOption? value)
     {
         if (value != null)
@@ -255,6 +284,18 @@ public partial class MainViewModel : ObservableObject
             Detail.Load(value.Item, fix);
             OnPropertyChanged(nameof(CanExecuteAutoFix));
         }
+
+        NotifyAdvancedUiChanged();
+    }
+
+    public bool ShowAdvancedDetailTools => AdvancedMode && Detail.HasSelection;
+
+    public bool ShowAdvancedAssistantSummary => AdvancedMode && Detail.HasAssistantSummary;
+
+    private void NotifyAdvancedUiChanged()
+    {
+        OnPropertyChanged(nameof(ShowAdvancedDetailTools));
+        OnPropertyChanged(nameof(ShowAdvancedAssistantSummary));
     }
 
     public AutoFixRecommendation? PendingAutoFix => Detail.CurrentAutoFix;
@@ -356,6 +397,32 @@ public partial class MainViewModel : ObservableObject
         RefreshToolsStatus();
         TelemetryService.Track("ai_beta_toggled", new Dictionary<string, string> { ["enabled"] = value ? "true" : "false" });
         StatusMessage = value ? Loc.T("Status.AiBetaOn") : Loc.T("Status.AiBetaOff");
+    }
+
+    partial void OnAdvancedModeChanged(bool value)
+    {
+        if (_isHydratingSettings)
+        {
+            return;
+        }
+
+        _settings.UiAdvancedMode = value;
+        if (!PersistSettings())
+        {
+            return;
+        }
+
+        if (!value)
+        {
+            Detail.ShowTechnical = false;
+        }
+
+        NotifyAdvancedUiChanged();
+        TelemetryService.Track("advanced_mode_toggled", new Dictionary<string, string>
+        {
+            ["enabled"] = value ? "true" : "false"
+        });
+        StatusMessage = value ? Loc.T("Status.AdvancedOn") : Loc.T("Status.AdvancedOff");
     }
 
     partial void OnAiCloudDataConsentChanged(bool value)
@@ -497,6 +564,16 @@ public partial class MainViewModel : ObservableObject
         foreach (var theme in ThemeOptions)
         {
             theme.DisplayName = AppThemeService.DisplayName(theme.Id);
+        }
+
+        foreach (var option in SeverityFilterOptions)
+        {
+            option.DisplayName = option.Id switch
+            {
+                SeverityFilter.Critical => Loc.T("Filter.Severity.Critical"),
+                SeverityFilter.Watch => Loc.T("Filter.Severity.Watch"),
+                _ => Loc.T("Filter.Severity.All")
+            };
         }
 
         if (ErrorCount == 0 && WarningCount == 0 && !IsLoading)
@@ -780,6 +857,7 @@ public partial class MainViewModel : ObservableObject
         StatusMessage = Loc.T("Status.PreparingSummary");
         var summary = await _aiAssistantService.BuildIncidentSummaryAsync(SelectedIncident.Item, _settings);
         Detail.SetAssistantSummary(summary);
+        NotifyAdvancedUiChanged();
         StatusMessage = summary.StartsWith(Loc.T("Ai.CloudMode"), StringComparison.Ordinal)
             ? Loc.T("Status.SummaryCloudReady")
             : (AiBetaEnabled ? Loc.T("Status.SummaryBetaReady") : Loc.T("Status.SummaryLocalReady"));
@@ -1006,6 +1084,12 @@ public partial class MainViewModel : ObservableObject
             filtered = filtered.Where(e => e.IsNew);
         }
 
+        var severityId = SelectedSeverityFilter?.Id ?? SeverityFilter.All;
+        if (!string.Equals(severityId, SeverityFilter.All, StringComparison.OrdinalIgnoreCase))
+        {
+            filtered = filtered.Where(e => SeverityFilter.Matches(severityId, e.Level));
+        }
+
         if (!string.IsNullOrWhiteSpace(query))
         {
             filtered = filtered.Where(e =>
@@ -1061,6 +1145,11 @@ public partial class MainViewModel : ObservableObject
         {
             EmptyTitle = Loc.T("Empty.NoIncidents.Title");
             EmptyMessage = Loc.T("Empty.NoIncidents.Message");
+        }
+        else if (!string.Equals(SelectedSeverityFilter?.Id, SeverityFilter.All, StringComparison.OrdinalIgnoreCase))
+        {
+            EmptyTitle = Loc.T("Empty.NoSeverity.Title");
+            EmptyMessage = Loc.T("Empty.NoSeverity.Message");
         }
         else
         {

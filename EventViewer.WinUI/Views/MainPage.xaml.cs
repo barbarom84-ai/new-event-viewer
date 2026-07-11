@@ -217,6 +217,31 @@ public sealed partial class MainPage : Page
             Foreground = muted
         });
 
+        var advancedMode = new ToggleSwitch
+        {
+            Header = Loc.T("Options.AdvancedMode"),
+            OnContent = Loc.T("Options.On"),
+            OffContent = Loc.T("Options.Off"),
+            IsOn = ViewModel.AdvancedMode,
+            Margin = new Thickness(0, 8, 0, 0)
+        };
+        AppThemeService.ApplyElementTheme(advancedMode);
+        root.Children.Add(advancedMode);
+        root.Children.Add(new TextBlock
+        {
+            Text = Loc.T("Options.AdvancedHint"),
+            FontSize = 11,
+            TextWrapping = TextWrapping.WrapWholeWords,
+            Foreground = muted
+        });
+
+        var advancedPanel = new StackPanel { Spacing = 12, Visibility = ViewModel.AdvancedMode ? Visibility.Visible : Visibility.Collapsed };
+        advancedMode.Toggled += (_, _) =>
+        {
+            ViewModel.AdvancedMode = advancedMode.IsOn;
+            advancedPanel.Visibility = advancedMode.IsOn ? Visibility.Visible : Visibility.Collapsed;
+        };
+
         var telemetry = new ToggleSwitch
         {
             Header = Loc.T("Options.Telemetry"),
@@ -226,7 +251,7 @@ public sealed partial class MainPage : Page
         };
         AppThemeService.ApplyElementTheme(telemetry);
         telemetry.Toggled += (_, _) => ViewModel.TelemetryOptIn = telemetry.IsOn;
-        root.Children.Add(telemetry);
+        advancedPanel.Children.Add(telemetry);
 
         var aiBeta = new ToggleSwitch
         {
@@ -236,7 +261,7 @@ public sealed partial class MainPage : Page
             IsOn = ViewModel.AiBetaEnabled
         };
         AppThemeService.ApplyElementTheme(aiBeta);
-        root.Children.Add(aiBeta);
+        advancedPanel.Children.Add(aiBeta);
 
         var consent = new ToggleSwitch
         {
@@ -253,7 +278,7 @@ public sealed partial class MainPage : Page
             ViewModel.AiBetaEnabled = aiBeta.IsOn;
             consent.IsEnabled = aiBeta.IsOn;
         };
-        root.Children.Add(consent);
+        advancedPanel.Children.Add(consent);
 
         var endpoint = new TextBox
         {
@@ -264,7 +289,7 @@ public sealed partial class MainPage : Page
         };
         AppThemeService.ApplyElementTheme(endpoint);
         endpoint.TextChanged += (_, _) => ViewModel.AiEndpoint = endpoint.Text;
-        root.Children.Add(endpoint);
+        advancedPanel.Children.Add(endpoint);
 
         var model = new TextBox
         {
@@ -275,28 +300,30 @@ public sealed partial class MainPage : Page
         };
         AppThemeService.ApplyElementTheme(model);
         model.TextChanged += (_, _) => ViewModel.AiModel = model.Text;
-        root.Children.Add(model);
+        advancedPanel.Children.Add(model);
 
-        root.Children.Add(new TextBlock
+        advancedPanel.Children.Add(new TextBlock
         {
             Text = ViewModel.AiCloudStatus,
             FontSize = 12,
             TextWrapping = TextWrapping.WrapWholeWords,
             Foreground = text
         });
-        root.Children.Add(new TextBlock
+        advancedPanel.Children.Add(new TextBlock
         {
             Text = Loc.T("Options.AiKeyHint"),
             FontSize = 11,
             TextWrapping = TextWrapping.WrapWholeWords,
             Foreground = muted
         });
-        root.Children.Add(new TextBlock
+        advancedPanel.Children.Add(new TextBlock
         {
             Text = ViewModel.ToolsStatus,
             FontSize = 12,
             Foreground = text
         });
+
+        root.Children.Add(advancedPanel);
 
         return root;
     }

@@ -44,6 +44,11 @@ namespace EventViewer.Core
         /// </summary>
         public string UiTheme { get; set; } = "dark";
 
+        /// <summary>
+        /// Shows telemetry, cloud AI, and technical detail controls.
+        /// </summary>
+        public bool UiAdvancedMode { get; set; } = false;
+
         public DateTime LastUpdatedUtc { get; set; } = DateTime.UtcNow;
 
         public void SetApiKey(string? plaintext)
